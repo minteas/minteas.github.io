@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>種目ランダムピッカー | @ijiri_fit</title>
+<title>種目ランダムピッカー</title>
 <style>
   :root {
     --bg: #0f1115;
@@ -607,8 +607,29 @@ document.getElementById("addForm").addEventListener("submit", (e) => {
   renderAll();
 });
 
-document.getElementById("exportBtn").addEventListener("click", () => {
-  const blob = new Blob([JSON.stringify(exercises, null, 2)], { type: "application/json" });
+async function getDownloadsCapability() {
+  if (typeof window.claude === "undefined" || typeof window.claude.use !== "function") return null;
+  try {
+    return await window.claude.use("downloads");
+  } catch (e) {
+    return null;
+  }
+}
+
+document.getElementById("exportBtn").addEventListener("click", async () => {
+  const json = JSON.stringify(exercises, null, 2);
+  const downloads = await getDownloadsCapability();
+  if (downloads) {
+    try {
+      await downloads.save({ filename: "exercises.json", data: json });
+      showToast("書き出しました");
+    } catch (e) {
+      if (e && e.code !== "declined") showToast("書き出しに失敗しました");
+    }
+    return;
+  }
+  // フォールバック（通常のブラウザで開いている場合）
+  const blob = new Blob([json], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
