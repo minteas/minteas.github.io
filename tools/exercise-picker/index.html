@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>種目ランダムピッカー | @ijiri_fit</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e222c;
+    --border: #2a2f3a;
+    --text: #eef0f4;
+    --muted: #9aa2b1;
+    --accent: #5ee6b0;
+    --accent-2: #7aa8ff;
+    --danger: #ff6b6b;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 28px; }
+  header h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: 0.02em; }
+  header p { color: var(--muted); font-size: 13px; margin: 0; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 18px;
+  }
+  .card h2 {
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0 0 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .tag-btn {
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  .tag-btn:hover { border-color: var(--accent-2); }
+  .tag-btn.active {
+    background: var(--accent);
+    color: #0b1410;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
+  .mode-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .mode-row select {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+
+  .big-btn {
+    width: 100%;
+    padding: 18px;
+    font-size: 16px;
+    font-weight: 700;
+    border: none;
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #0b1410;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: transform 0.1s ease;
+  }
+  .big-btn:active { transform: scale(0.98); }
+  .big-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .result {
+    padding: 24px 4px 4px;
+    min-height: 90px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .result .empty {
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    padding: 20px 0;
+  }
+  .result-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    animation: pop 0.25s ease;
+  }
+  .result-item .num {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #0b1410;
+    font-weight: 800;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .result-item .body { flex: 1; min-width: 0; }
+  .result-item .name { font-size: 18px; font-weight: 700; letter-spacing: 0.01em; }
+  .result-item .rtags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .result-item .rtags span {
+    font-size: 11px;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+  @keyframes pop {
+    0% { transform: scale(0.96); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .list-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .list-row:last-child { border-bottom: none; }
+  .list-row .info { flex: 1; min-width: 0; }
+  .list-row .name { font-size: 14px; font-weight: 600; }
+  .list-row .rtags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 4px; }
+  .list-row .rtags span {
+    font-size: 10.5px;
+    color: var(--muted);
+    background: var(--panel-2);
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+  .list-row .actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .icon-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 6px 9px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .icon-btn:hover { border-color: var(--accent-2); color: var(--text); }
+  .icon-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+
+  form.add-form { display: flex; flex-direction: column; gap: 10px; }
+  form.add-form input[type="text"] {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+  .chip-select {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .chip-select .tag-btn { padding: 5px 11px; font-size: 12px; }
+  .new-tag-row { display: flex; gap: 6px; }
+  .new-tag-row input { flex: 1; }
+  .new-tag-row button {
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--accent-2);
+    border-radius: 8px;
+    padding: 0 14px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .submit-row { display: flex; gap: 8px; margin-top: 4px; }
+  .submit-row button[type="submit"] {
+    flex: 1;
+    background: var(--accent-2);
+    border: none;
+    color: #0b1220;
+    font-weight: 700;
+    padding: 11px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .footer-row { display: flex; gap: 8px; justify-content: center; margin-top: 4px; }
+  .footer-row button {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .footer-row button:hover { color: var(--text); border-color: var(--accent-2); }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .toast.show { opacity: 1; }
+  #importFile { display: none; }
+  summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>種目ランダムピッカー</h1>
+    <p>@ijiri_fit — 目的を選んでランダムに5種目を表示</p>
+  </header>
+
+  <div class="card">
+    <h2>目的で絞り込む（複数選択可・未選択なら全種目から）</h2>
+    <div class="tags" id="tagFilters"></div>
+    <div class="mode-row">
+      <span>絞り込み方式:</span>
+      <select id="matchMode">
+        <option value="any">いずれかに一致（OR）</option>
+        <option value="all">すべてに一致（AND）</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+    <button class="big-btn" id="rollBtn">🎲 ランダムに5種目表示</button>
+    <div class="result" id="result">
+      <div class="empty">ボタンを押すと種目が表示されます</div>
+    </div>
+  </div>
+
+  <details class="card" id="manageCard">
+    <summary>種目を追加・編集する</summary>
+    <div style="margin-top:16px;">
+      <form class="add-form" id="addForm">
+        <input type="text" id="newName" placeholder="種目名（例: プランク）" required>
+        <div>
+          <div class="hint" style="margin:0 0 6px;">目的タグ（既存から選ぶ／新規追加）</div>
+          <div class="chip-select" id="chipSelect"></div>
+          <div class="new-tag-row" style="margin-top:8px;">
+            <input type="text" id="newTagInput" placeholder="新しいタグ名を入力して追加">
+            <button type="button" id="addTagBtn">＋タグ追加</button>
+          </div>
+        </div>
+        <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); cursor:pointer;">
+          <input type="checkbox" id="requiredCheck" style="width:16px; height:16px;">
+          📌 固定枠にする（絞り込み条件に合う限り、毎回の表示に必ず含める）
+        </label>
+        <div class="submit-row">
+          <button type="submit" id="submitBtn">この種目を追加</button>
+        </div>
+        <input type="hidden" id="editingIndex" value="">
+      </form>
+
+      <div style="margin-top:20px;">
+        <h2>登録済み種目一覧（<span id="countLabel">0</span>件）</h2>
+        <div id="exerciseList"></div>
+      </div>
+
+      <div class="footer-row">
+        <button id="exportBtn">JSONで書き出し</button>
+        <button id="importBtn">JSONを読み込み</button>
+        <button id="resetBtn">初期データに戻す</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json">
+      <p class="hint">
+        追加・編集した内容はこのブラウザに保存されます（localStorage）。<br>
+        別の端末やブラウザでも使いたい場合は「JSONで書き出し」でファイル保存し、<br>
+        そちらで「JSONを読み込み」してください。
+      </p>
+    </div>
+  </details>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = "ijiri_fit_exercises_v1";
+
+const SEED = [
+  { name: "スクワット", tags: ["下半身", "ダイエット"] },
+  { name: "サイドベント", tags: ["お腹痩せ"], required: true },
+  { name: "ランジウォーク", tags: ["下半身", "ダイエット"] },
+  { name: "フレンチプレス", tags: ["二の腕痩せ", "肩こり解消"] },
+  { name: "クラブウォーク", tags: ["ヒップアップ"] },
+  { name: "バイシクルクランチ", tags: ["お腹痩せ"] },
+  { name: "マウンテンクライマー", tags: ["ダイエット"] },
+  { name: "レッグプル", tags: ["体幹", "お腹痩せ", "姿勢改善"] },
+  { name: "ダイアゴナル", tags: ["体幹", "姿勢改善"] },
+  { name: "バックランジ", tags: ["下半身", "ダイエット"] },
+  { name: "ローリング", tags: ["姿勢改善"] },
+  { name: "ショルダープレス", tags: ["二の腕痩せ"] },
+  { name: "片足タッチ", tags: ["ヒップアップ"] },
+  { name: "床タッチ", tags: ["ヒップアップ"] },
+  { name: "お尻歩き", tags: ["体幹"] }
+];
+
+let exercises = [];
+let activeFilters = new Set();
+let selectedNewTags = new Set();
+let storageAvailable = true;
+
+function checkStorage() {
+  try {
+    const testKey = "__storage_test__";
+    localStorage.setItem(testKey, "1");
+    localStorage.removeItem(testKey);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function loadData() {
+  storageAvailable = checkStorage();
+  if (storageAvailable) {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        exercises = JSON.parse(raw);
+        return;
+      }
+    } catch (e) { /* fall through to seed */ }
+  }
+  exercises = JSON.parse(JSON.stringify(SEED));
+  saveData();
+}
+
+function saveData() {
+  if (!storageAvailable) return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(exercises));
+  } catch (e) { /* ignore quota / disabled errors */ }
+}
+
+function allTags() {
+  const set = new Set();
+  exercises.forEach(ex => ex.tags.forEach(t => set.add(t)));
+  return Array.from(set).sort((a, b) => a.localeCompare(b, "ja"));
+}
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(() => t.classList.remove("show"), 1800);
+}
+
+/* ---------- filter chips ---------- */
+function renderTagFilters() {
+  const wrap = document.getElementById("tagFilters");
+  wrap.innerHTML = "";
+  allTags().forEach(tag => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tag-btn" + (activeFilters.has(tag) ? " active" : "");
+    btn.textContent = tag;
+    btn.addEventListener("click", () => {
+      if (activeFilters.has(tag)) activeFilters.delete(tag);
+      else activeFilters.add(tag);
+      renderTagFilters();
+    });
+    wrap.appendChild(btn);
+  });
+  if (allTags().length === 0) {
+    wrap.innerHTML = '<span class="hint">まだタグがありません。下の「種目を追加・編集する」から登録してください。</span>';
+  }
+}
+
+/* ---------- random roll ---------- */
+function getFiltered() {
+  if (activeFilters.size === 0) return exercises;
+  const mode = document.getElementById("matchMode").value;
+  return exercises.filter(ex => {
+    if (mode === "all") {
+      return Array.from(activeFilters).every(t => ex.tags.includes(t));
+    }
+    return Array.from(activeFilters).some(t => ex.tags.includes(t));
+  });
+}
+
+const ROLL_COUNT = 5;
+
+function roll() {
+  const pool = getFiltered();
+  const resultEl = document.getElementById("result");
+  if (pool.length === 0) {
+    resultEl.innerHTML = '<div class="empty">条件に一致する種目がありません。絞り込みを見直してください。</div>';
+    return;
+  }
+  // 固定枠（required）は絞り込み条件に一致する限り必ず結果に含める
+  const required = pool.filter(ex => ex.required);
+  const rest = pool.filter(ex => !ex.required);
+  const shuffledRest = [...rest].sort(() => Math.random() - 0.5);
+  const fillCount = Math.max(0, ROLL_COUNT - required.length);
+  const picks = [...required, ...shuffledRest.slice(0, fillCount)]
+    .sort(() => Math.random() - 0.5);
+
+  resultEl.innerHTML = picks.map((pick, i) => `
+    <div class="result-item">
+      <div class="num">${pick.required ? "📌" : i + 1}</div>
+      <div class="body">
+        <div class="name">${escapeHtml(pick.name)}</div>
+        <div class="rtags">${pick.tags.map(t => `<span>${escapeHtml(t)}</span>`).join("")}</div>
+      </div>
+    </div>
+  `).join("");
+  if (picks.length < ROLL_COUNT) {
+    resultEl.innerHTML += `<div class="empty">条件に一致する種目は${picks.length}件のみでした（全件表示）</div>`;
+  }
+}
+
+/* ---------- manage list ---------- */
+function renderChipSelect() {
+  const wrap = document.getElementById("chipSelect");
+  wrap.innerHTML = "";
+  allTags().forEach(tag => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tag-btn" + (selectedNewTags.has(tag) ? " active" : "");
+    btn.textContent = tag;
+    btn.addEventListener("click", () => {
+      if (selectedNewTags.has(tag)) selectedNewTags.delete(tag);
+      else selectedNewTags.add(tag);
+      renderChipSelect();
+    });
+    wrap.appendChild(btn);
+  });
+}
+
+function renderList() {
+  const wrap = document.getElementById("exerciseList");
+  document.getElementById("countLabel").textContent = exercises.length;
+  wrap.innerHTML = "";
+  exercises.forEach((ex, i) => {
+    const row = document.createElement("div");
+    row.className = "list-row";
+    row.innerHTML = `
+      <div class="info">
+        <div class="name">${ex.required ? "📌 " : ""}${escapeHtml(ex.name)}</div>
+        <div class="rtags">${ex.tags.map(t => `<span>${escapeHtml(t)}</span>`).join("")}</div>
+      </div>
+      <div class="actions">
+        <button class="icon-btn" data-edit="${i}">編集</button>
+        <button class="icon-btn danger" data-del="${i}">削除</button>
+      </div>
+    `;
+    wrap.appendChild(row);
+  });
+  wrap.querySelectorAll("[data-edit]").forEach(btn => {
+    btn.addEventListener("click", () => startEdit(Number(btn.dataset.edit)));
+  });
+  wrap.querySelectorAll("[data-del]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.dataset.del);
+      if (confirm(`「${exercises[idx].name}」を削除しますか？`)) {
+        exercises.splice(idx, 1);
+        saveData();
+        renderAll();
+        showToast("削除しました");
+      }
+    });
+  });
+}
+
+function startEdit(idx) {
+  const ex = exercises[idx];
+  document.getElementById("editingIndex").value = idx;
+  document.getElementById("newName").value = ex.name;
+  document.getElementById("requiredCheck").checked = !!ex.required;
+  selectedNewTags = new Set(ex.tags);
+  renderChipSelect();
+  document.getElementById("submitBtn").textContent = "この内容で更新";
+  document.getElementById("manageCard").open = true;
+  document.getElementById("addForm").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function resetForm() {
+  document.getElementById("editingIndex").value = "";
+  document.getElementById("newName").value = "";
+  document.getElementById("requiredCheck").checked = false;
+  selectedNewTags = new Set();
+  renderChipSelect();
+  document.getElementById("submitBtn").textContent = "この種目を追加";
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderAll() {
+  renderTagFilters();
+  renderChipSelect();
+  renderList();
+  renderStorageWarning();
+}
+
+function renderStorageWarning() {
+  const existing = document.getElementById("storageWarning");
+  if (storageAvailable) {
+    if (existing) existing.remove();
+    return;
+  }
+  if (existing) return;
+  const el = document.createElement("p");
+  el.id = "storageWarning";
+  el.className = "hint";
+  el.style.textAlign = "center";
+  el.style.color = "var(--danger)";
+  el.textContent = "この環境ではデータの自動保存ができません（プライベートブラウジング等）。追加・編集した内容は「JSONで書き出し」で保存してください。";
+  document.querySelector("header").appendChild(el);
+}
+
+/* ---------- events ---------- */
+document.getElementById("rollBtn").addEventListener("click", roll);
+
+document.getElementById("addTagBtn").addEventListener("click", () => {
+  const input = document.getElementById("newTagInput");
+  const val = input.value.trim();
+  if (!val) return;
+  selectedNewTags.add(val);
+  input.value = "";
+  renderChipSelect();
+  renderTagFilters();
+});
+document.getElementById("newTagInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    document.getElementById("addTagBtn").click();
+  }
+});
+
+document.getElementById("addForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const name = document.getElementById("newName").value.trim();
+  if (!name) return;
+  if (selectedNewTags.size === 0) {
+    if (!confirm("タグが未選択です。タグなしで登録しますか？")) return;
+  }
+  const idxRaw = document.getElementById("editingIndex").value;
+  const entry = { name, tags: Array.from(selectedNewTags) };
+  if (document.getElementById("requiredCheck").checked) entry.required = true;
+  if (idxRaw !== "") {
+    exercises[Number(idxRaw)] = entry;
+    showToast("更新しました");
+  } else {
+    exercises.push(entry);
+    showToast("追加しました");
+  }
+  saveData();
+  resetForm();
+  renderAll();
+});
+
+document.getElementById("exportBtn").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(exercises, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "exercises.json";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById("importBtn").addEventListener("click", () => {
+  document.getElementById("importFile").click();
+});
+document.getElementById("importFile").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!Array.isArray(data)) throw new Error("invalid");
+      exercises = data
+        .filter(d => d && typeof d.name === "string" && Array.isArray(d.tags))
+        .map(d => ({ name: d.name, tags: d.tags, ...(d.required ? { required: true } : {}) }));
+      saveData();
+      renderAll();
+      showToast("読み込みました");
+    } catch (err) {
+      alert("JSONの形式が正しくありません。");
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+});
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if (confirm("追加・編集した内容を破棄して初期データに戻しますか？")) {
+    exercises = JSON.parse(JSON.stringify(SEED));
+    saveData();
+    renderAll();
+    showToast("初期データに戻しました");
+  }
+});
+
+/* ---------- init ---------- */
+loadData();
+renderAll();
+</script>
+</body>
+</html>

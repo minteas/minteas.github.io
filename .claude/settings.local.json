@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import reportlab; print\\(reportlab.Version\\)\")",
+      "Bash(pip3 install *)",
+      "Bash(python3 -c \"import reportlab; print\\('ok', reportlab.Version\\)\")",
+      "Bash(python3 gen_konkatsu_script.py)"
+    ]
+  }
+}

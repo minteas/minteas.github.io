@@ -1,0 +1,25 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "packing-checklist",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8934", "--directory", "/Users/ijiri/packing-checklist"],
+      "port": 8934
+    },
+    {
+      "name": "mintys-lp",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "python3 -m http.server \"$PORT\" --directory /Users/ijiri/mintys-lp"],
+      "port": 8935,
+      "autoPort": true
+    },
+    {
+      "name": "ijiri-performance-lp",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "python3 -m http.server \"$PORT\" --directory /Users/ijiri/ijiri-performance-lp"],
+      "port": 8936,
+      "autoPort": true
+    }
+  ]
+}
