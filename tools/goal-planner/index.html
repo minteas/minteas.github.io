@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>目標プランナー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --paper: #eef0ea;
+    --paper-raised: #f7f8f4;
+    --ink: #222a20;
+    --ink-soft: #5b6455;
+    --ink-faint: #8b937f;
+    --line: #ccd2c2;
+    --line-soft: #dbdfd2;
+    --accent: #3f6652;
+    --accent-soft: #dde8df;
+    --accent-ink: #1f3a2c;
+
+    --q-hot: #b5482f;      /* 緊急×重要 / 効いていない */
+    --q-hot-bg: #f3e2dc;
+    --q-important: #2e5266; /* 重要のみ */
+    --q-important-bg: #dfe6ea;
+    --q-urgent: #b1791f;    /* 緊急のみ / 様子見 */
+    --q-urgent-bg: #f1e4cd;
+    --q-none: #6f7566;      /* どちらでもない */
+    --q-none-bg: #e4e6dd;
+
+    --shadow: 0 1px 2px rgba(34,42,32,0.06), 0 6px 16px rgba(34,42,32,0.05);
+    --radius: 14px;
+    --font-display: "Shippori Mincho", serif;
+    --font-body: "Zen Kaku Gothic New", "Hiragino Sans", sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #1b201a;
+      --paper-raised: #232a20;
+      --ink: #e9ece3;
+      --ink-soft: #aab29e;
+      --ink-faint: #737d68;
+      --line: #3a4234;
+      --line-soft: #2c3327;
+      --accent: #7fae94;
+      --accent-soft: #2a3a2e;
+      --accent-ink: #cfe6d7;
+
+      --q-hot: #e08a6f;
+      --q-hot-bg: #3c2620;
+      --q-important: #7fa8bd;
+      --q-important-bg: #202d34;
+      --q-urgent: #d9ad5e;
+      --q-urgent-bg: #362c1a;
+      --q-none: #9aa190;
+      --q-none-bg: #2a2e26;
+
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 20px rgba(0,0,0,0.35);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #1b201a;
+    --paper-raised: #232a20;
+    --ink: #e9ece3;
+    --ink-soft: #aab29e;
+    --ink-faint: #737d68;
+    --line: #3a4234;
+    --line-soft: #2c3327;
+    --accent: #7fae94;
+    --accent-soft: #2a3a2e;
+    --accent-ink: #cfe6d7;
+
+    --q-hot: #e08a6f;
+    --q-hot-bg: #3c2620;
+    --q-important: #7fa8bd;
+    --q-important-bg: #202d34;
+    --q-urgent: #d9ad5e;
+    --q-urgent-bg: #362c1a;
+    --q-none: #9aa190;
+    --q-none-bg: #2a2e26;
+
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 20px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  header.masthead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+
+  header.masthead h1 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(1.6rem, 3vw, 2.1rem);
+    margin: 0;
+    letter-spacing: 0.02em;
+    text-wrap: balance;
+  }
+
+  header.masthead .date-label {
+    font-size: 0.82rem;
+    color: var(--ink-faint);
+    letter-spacing: 0.05em;
+  }
+
+  section.block {
+    margin-bottom: 36px;
+  }
+
+  .block-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .block-label .tag {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    color: var(--accent-ink);
+    background: var(--accent-soft);
+    padding: 3px 10px;
+    border-radius: 999px;
+  }
+
+  .block-label .hint {
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+  }
+
+  textarea, input[type="text"], select {
+    font-family: var(--font-body);
+    color: var(--ink);
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+    width: 100%;
+    resize: vertical;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  textarea:focus, input[type="text"]:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  .month-goal textarea {
+    font-size: 1.15rem;
+    font-weight: 500;
+    min-height: 64px;
+    box-shadow: var(--shadow);
+  }
+
+  /* ---- 今週の数値目標 ---- */
+
+  .goal-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .goal-card {
+    background: var(--paper-raised);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .goal-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .goal-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+
+  .goalName {
+    font-weight: 500;
+    font-size: 0.95rem;
+    padding: 8px 10px;
+  }
+
+  .goal-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .goal-metrics label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.72rem;
+    color: var(--ink-faint);
+    letter-spacing: 0.04em;
+  }
+
+  .goal-metrics input {
+    font-size: 0.88rem;
+    padding: 7px 9px;
+  }
+
+  .goal-effect {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .goal-effect button {
+    flex: 1;
+    font-family: var(--font-body);
+    font-size: 0.74rem;
+    font-weight: 700;
+    border: 1px solid var(--line-soft);
+    background: var(--paper);
+    color: var(--ink-faint);
+    border-radius: 8px;
+    padding: 6px 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+
+  .goal-effect button:hover { border-color: var(--ink-faint); }
+
+  .goal-effect button[data-effect="good"].active {
+    background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent);
+  }
+  .goal-effect button[data-effect="mid"].active {
+    background: var(--q-urgent-bg); color: var(--q-urgent); border-color: var(--q-urgent);
+  }
+  .goal-effect button[data-effect="bad"].active {
+    background: var(--q-hot-bg); color: var(--q-hot); border-color: var(--q-hot);
+  }
+
+  /* ---- 4象限タスク ---- */
+
+  .matrix-intro {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .matrix-legend {
+    font-size: 0.74rem;
+    color: var(--ink-faint);
+    margin-bottom: 14px;
+  }
+
+  .progress-chip {
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+    background: var(--paper-raised);
+    border: 1px solid var(--line-soft);
+    padding: 5px 12px;
+    border-radius: 999px;
+  }
+
+  .matrix-wrap {
+    display: grid;
+    grid-template-columns: 32px 1fr 1fr;
+    grid-template-rows: 24px 1fr 1fr;
+    gap: 10px;
+  }
+
+  .axis-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+    font-weight: 700;
+  }
+
+  .axis-top { grid-row: 1; }
+  .axis-top.col2 { grid-column: 2; }
+  .axis-top.col3 { grid-column: 3; }
+
+  .axis-left {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+  }
+  .axis-left.row2 { grid-row: 2; grid-column: 1; }
+  .axis-left.row3 { grid-row: 3; grid-column: 1; }
+
+  .quadrant {
+    border-radius: var(--radius);
+    padding: 16px;
+    border: 1px solid var(--line-soft);
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 220px;
+  }
+
+  .quadrant[data-q="hot"] { background: var(--q-hot-bg); }
+  .quadrant[data-q="important"] { background: var(--q-important-bg); }
+  .quadrant[data-q="urgent"] { background: var(--q-urgent-bg); }
+  .quadrant[data-q="none"] { background: var(--q-none-bg); }
+
+  .quadrant .q-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .quadrant .q-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1rem;
+  }
+  .quadrant[data-q="hot"] .q-title { color: var(--q-hot); }
+  .quadrant[data-q="important"] .q-title { color: var(--q-important); }
+  .quadrant[data-q="urgent"] .q-title { color: var(--q-urgent); }
+  .quadrant[data-q="none"] .q-title { color: var(--q-none); }
+
+  .quadrant .q-count {
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .q-add {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .q-add .goal-select {
+    width: auto;
+    flex: 0 0 84px;
+    font-size: 0.78rem;
+    padding: 8px 6px;
+    background: var(--paper-raised);
+  }
+
+  .q-add input[type="text"] {
+    flex: 1;
+    min-width: 100px;
+    background: var(--paper-raised);
+    font-size: 0.88rem;
+    padding: 8px 10px;
+  }
+
+  .q-add button {
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 0.85rem;
+    border: none;
+    border-radius: 8px;
+    padding: 0 14px;
+    cursor: pointer;
+    background: var(--ink);
+    color: var(--paper);
+    transition: opacity 0.15s ease, transform 0.1s ease;
+  }
+  .q-add button:hover { opacity: 0.85; }
+  .q-add button:active { transform: scale(0.97); }
+
+  .q-add button:focus-visible,
+  textarea:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  .task-check:focus-visible,
+  .task-del:focus-visible,
+  .task-effect:focus-visible,
+  .goal-effect button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .task-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+  }
+
+  .task-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    background: var(--paper-raised);
+    border: 1px solid var(--line-soft);
+    border-radius: 8px;
+    padding: 7px 9px;
+    font-size: 0.88rem;
+  }
+
+  .task-item.done .task-text {
+    text-decoration: line-through;
+    color: var(--ink-faint);
+  }
+
+  .task-check {
+    margin-top: 3px;
+    width: 15px;
+    height: 15px;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .task-goal-badge {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.7rem;
+    margin-top: 1px;
+  }
+
+  .task-text {
+    flex: 1;
+    word-break: break-word;
+  }
+
+  .task-effect {
+    flex-shrink: 0;
+    border: 1px solid var(--line-soft);
+    background: var(--paper);
+    border-radius: 6px;
+    width: 24px;
+    height: 22px;
+    font-size: 0.82rem;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--ink-faint);
+  }
+  .task-effect[data-state="good"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+  .task-effect[data-state="mid"] { color: var(--q-urgent); border-color: var(--q-urgent); background: var(--q-urgent-bg); }
+  .task-effect[data-state="bad"] { color: var(--q-hot); border-color: var(--q-hot); background: var(--q-hot-bg); }
+
+  .task-del {
+    border: none;
+    background: transparent;
+    color: var(--ink-faint);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .task-del:hover { color: var(--q-hot); background: var(--paper); }
+
+  .empty-hint {
+    font-size: 0.8rem;
+    color: var(--ink-faint);
+    font-style: italic;
+    padding: 4px 2px;
+  }
+
+  footer.controls {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 28px;
+  }
+
+  .reset-btn {
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    color: var(--ink-faint);
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 7px 14px;
+    cursor: pointer;
+  }
+  .reset-btn:hover { color: var(--q-hot); border-color: var(--q-hot); }
+
+  .save-note {
+    font-size: 0.75rem;
+    color: var(--ink-faint);
+    margin-right: auto;
+    align-self: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .save-note.visible { opacity: 1; }
+
+  @media (max-width: 760px) {
+    .goal-grid { grid-template-columns: 1fr; }
+    .matrix-wrap {
+      grid-template-columns: 1fr;
+      grid-template-rows: none;
+    }
+    .axis-label, .axis-left { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <header class="masthead">
+    <h1>目標プランナー</h1>
+    <span class="date-label" id="todayLabel"></span>
+  </header>
+
+  <section class="block month-goal">
+    <div class="block-label">
+      <span class="tag">今月の目標</span>
+      <span class="hint">1つだけ、大きく</span>
+    </div>
+    <textarea id="monthGoal" placeholder="今月、何を達成する？" rows="2"></textarea>
+  </section>
+
+  <section class="block">
+    <div class="block-label">
+      <span class="tag">今週の数値目標</span>
+      <span class="hint">月の目標を達成するために必要な数字を3つ。実績と手応えを毎週更新する</span>
+    </div>
+    <div class="goal-grid" id="goalGrid">
+      <!-- goal cards rendered by JS -->
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="matrix-intro">
+      <div class="block-label" style="margin-bottom:0;">
+        <span class="tag">タスクの4象限</span>
+        <span class="hint">緊急度 × 重要度で仕分ける</span>
+      </div>
+      <span class="progress-chip" id="progressChip">0 / 0 完了</span>
+    </div>
+    <div class="matrix-legend">① ② ③ ＝ ひもづく数値目標　　◎ 効いている／△ 様子見／✕ 効いていない（クリックで切り替え）</div>
+
+    <div class="matrix-wrap">
+      <div></div>
+      <div class="axis-label axis-top col2">緊急</div>
+      <div class="axis-label axis-top col3">緊急でない</div>
+
+      <div class="axis-label axis-left row2">重要</div>
+      <div class="quadrant" data-q="hot">
+        <div class="q-head">
+          <span class="q-title">緊急かつ重要</span>
+          <span class="q-count" data-count="hot">0件</span>
+        </div>
+        <form class="q-add" data-q="hot">
+          <select class="goal-select"><option value="">目標なし</option><option value="0">①</option><option value="1">②</option><option value="2">③</option></select>
+          <input type="text" placeholder="今すぐやるタスクを追加" maxlength="120">
+          <button type="submit">追加</button>
+        </form>
+        <ul class="task-list" data-q="hot"></ul>
+      </div>
+      <div class="quadrant" data-q="important">
+        <div class="q-head">
+          <span class="q-title">緊急でないが重要</span>
+          <span class="q-count" data-count="important">0件</span>
+        </div>
+        <form class="q-add" data-q="important">
+          <select class="goal-select"><option value="">目標なし</option><option value="0">①</option><option value="1">②</option><option value="2">③</option></select>
+          <input type="text" placeholder="計画的に取り組むタスクを追加" maxlength="120">
+          <button type="submit">追加</button>
+        </form>
+        <ul class="task-list" data-q="important"></ul>
+      </div>
+
+      <div class="axis-label axis-left row3">重要でない</div>
+      <div class="quadrant" data-q="urgent">
+        <div class="q-head">
+          <span class="q-title">重要ではないが緊急</span>
+          <span class="q-count" data-count="urgent">0件</span>
+        </div>
+        <form class="q-add" data-q="urgent">
+          <select class="goal-select"><option value="">目標なし</option><option value="0">①</option><option value="1">②</option><option value="2">③</option></select>
+          <input type="text" placeholder="人に任せられるタスクを追加" maxlength="120">
+          <button type="submit">追加</button>
+        </form>
+        <ul class="task-list" data-q="urgent"></ul>
+      </div>
+      <div class="quadrant" data-q="none">
+        <div class="q-head">
+          <span class="q-title">緊急でも重要でもない</span>
+          <span class="q-count" data-count="none">0件</span>
+        </div>
+        <form class="q-add" data-q="none">
+          <select class="goal-select"><option value="">目標なし</option><option value="0">①</option><option value="1">②</option><option value="2">③</option></select>
+          <input type="text" placeholder="やめてもいいタスクを追加" maxlength="120">
+          <button type="submit">追加</button>
+        </form>
+        <ul class="task-list" data-q="none"></ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="controls">
+    <span class="save-note" id="saveNote">保存しました</span>
+    <button class="reset-btn" id="resetBtn" type="button">すべてクリア</button>
+  </footer>
+</div>
+
+<script>
+(function () {
+  const STORAGE_KEY = "goal-planner-v2";
+  const LEGACY_KEY = "goal-planner-v1";
+  const QUADRANTS = ["hot", "important", "urgent", "none"];
+  const QUADRANT_NAMES = {
+    hot: "緊急かつ重要",
+    important: "緊急でないが重要",
+    urgent: "重要ではないが緊急",
+    none: "緊急でも重要でもない"
+  };
+  const EFFECT_SYMBOL = { unset: "－", good: "◎", mid: "△", bad: "✕" };
+  const GOAL_MARK = ["①", "②", "③"];
+
+  function defaultGoal() {
+    return { name: "", target: "", actual: "", effect: "unset" };
+  }
+
+  function defaultState() {
+    return {
+      month: "",
+      weekGoals: [defaultGoal(), defaultGoal(), defaultGoal()],
+      tasks: { hot: [], important: [], urgent: [], none: [] }
+    };
+  }
+
+  function sanitizeTask(t) {
+    if (!t || typeof t.text !== "string") return null;
+    let goal = null;
+    if (t.goal === 0 || t.goal === 1 || t.goal === 2) goal = t.goal;
+    let effect = "unset";
+    if (["good", "mid", "bad"].includes(t.effect)) effect = t.effect;
+    return { text: t.text, done: !!t.done, goal: goal, effect: effect };
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const state = defaultState();
+        if (typeof parsed.month === "string") state.month = parsed.month;
+        if (Array.isArray(parsed.weekGoals)) {
+          for (let i = 0; i < 3; i++) {
+            const g = parsed.weekGoals[i];
+            if (g && typeof g === "object") {
+              state.weekGoals[i] = {
+                name: typeof g.name === "string" ? g.name : "",
+                target: typeof g.target === "string" ? g.target : "",
+                actual: typeof g.actual === "string" ? g.actual : "",
+                effect: ["good", "mid", "bad"].includes(g.effect) ? g.effect : "unset"
+              };
+            }
+          }
+        }
+        if (parsed.tasks) {
+          QUADRANTS.forEach((q) => {
+            if (Array.isArray(parsed.tasks[q])) {
+              state.tasks[q] = parsed.tasks[q].map(sanitizeTask).filter(Boolean);
+            }
+          });
+        }
+        return state;
+      }
+
+      // 旧バージョン（週1〜3のテキスト目標）からの移行
+      const legacyRaw = localStorage.getItem(LEGACY_KEY);
+      if (legacyRaw) {
+        const legacy = JSON.parse(legacyRaw);
+        const state = defaultState();
+        if (typeof legacy.month === "string") state.month = legacy.month;
+        if (Array.isArray(legacy.weeks)) {
+          for (let i = 0; i < 3; i++) {
+            const text = legacy.weeks[i];
+            if (typeof text === "string" && text.trim()) {
+              state.weekGoals[i].name = text.trim().slice(0, 60);
+            }
+          }
+        }
+        if (legacy.tasks) {
+          QUADRANTS.forEach((q) => {
+            if (Array.isArray(legacy.tasks[q])) {
+              state.tasks[q] = legacy.tasks[q].map(sanitizeTask).filter(Boolean);
+            }
+          });
+        }
+        return state;
+      }
+
+      return defaultState();
+    } catch (e) {
+      return defaultState();
+    }
+  }
+
+  let state = loadState();
+  let saveTimer = null;
+
+  function persist() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const note = document.getElementById("saveNote");
+    note.classList.add("visible");
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => note.classList.remove("visible"), 1200);
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function goalLabel(i) {
+    const name = state.weekGoals[i].name.trim();
+    return name ? GOAL_MARK[i] + " " + name : GOAL_MARK[i] + "（未設定）";
+  }
+
+  function refreshGoalSelectLabels() {
+    document.querySelectorAll(".goal-select").forEach((sel) => {
+      const current = sel.value;
+      [0, 1, 2].forEach((i) => {
+        const opt = sel.querySelector('option[value="' + i + '"]');
+        if (opt) opt.textContent = goalLabel(i);
+      });
+      sel.value = current;
+    });
+  }
+
+  function renderGoals() {
+    const grid = document.getElementById("goalGrid");
+    grid.innerHTML = "";
+    state.weekGoals.forEach((goal, i) => {
+      const card = document.createElement("div");
+      card.className = "goal-card";
+      card.innerHTML =
+        '<div class="goal-card-head">' +
+          '<span class="goal-num">' + GOAL_MARK[i] + '</span>' +
+          '<input type="text" class="goalName" data-i="' + i + '" placeholder="指標名（例：リール投稿数）" value="' + escapeHtml(goal.name) + '">' +
+        '</div>' +
+        '<div class="goal-metrics">' +
+          '<label>目標値<input type="text" class="goalTarget" data-i="' + i + '" placeholder="例：3本" value="' + escapeHtml(goal.target) + '"></label>' +
+          '<label>実績値<input type="text" class="goalActual" data-i="' + i + '" placeholder="例：2本" value="' + escapeHtml(goal.actual) + '"></label>' +
+        '</div>' +
+        '<div class="goal-effect" data-i="' + i + '">' +
+          '<button type="button" data-effect="good" class="' + (goal.effect === "good" ? "active" : "") + '">◎ 効いている</button>' +
+          '<button type="button" data-effect="mid" class="' + (goal.effect === "mid" ? "active" : "") + '">△ 様子見</button>' +
+          '<button type="button" data-effect="bad" class="' + (goal.effect === "bad" ? "active" : "") + '">✕ 効いていない</button>' +
+        '</div>';
+      grid.appendChild(card);
+    });
+
+    grid.querySelectorAll(".goalName").forEach((el) => {
+      el.addEventListener("input", (e) => {
+        state.weekGoals[Number(el.dataset.i)].name = e.target.value;
+        persist();
+        refreshGoalSelectLabels();
+        renderTasks(); // タスクのバッジのtitleを更新
+      });
+    });
+    grid.querySelectorAll(".goalTarget").forEach((el) => {
+      el.addEventListener("input", (e) => {
+        state.weekGoals[Number(el.dataset.i)].target = e.target.value;
+        persist();
+      });
+    });
+    grid.querySelectorAll(".goalActual").forEach((el) => {
+      el.addEventListener("input", (e) => {
+        state.weekGoals[Number(el.dataset.i)].actual = e.target.value;
+        persist();
+      });
+    });
+    grid.querySelectorAll(".goal-effect button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const i = Number(btn.closest(".goal-effect").dataset.i);
+        const clicked = btn.dataset.effect;
+        state.weekGoals[i].effect = state.weekGoals[i].effect === clicked ? "unset" : clicked;
+        persist();
+        renderGoals();
+      });
+    });
+  }
+
+  function renderTasks() {
+    let totalDone = 0;
+    let total = 0;
+    QUADRANTS.forEach((q) => {
+      const list = document.querySelector('.task-list[data-q="' + q + '"]');
+      const countEl = document.querySelector('[data-count="' + q + '"]');
+      const items = state.tasks[q];
+      total += items.length;
+      list.innerHTML = "";
+      if (items.length === 0) {
+        const hint = document.createElement("li");
+        hint.className = "empty-hint";
+        hint.textContent = "まだタスクがありません";
+        list.appendChild(hint);
+      }
+      items.forEach((task, idx) => {
+        if (task.done) totalDone++;
+        const li = document.createElement("li");
+        li.className = "task-item" + (task.done ? " done" : "");
+        const badge = task.goal !== null
+          ? '<span class="task-goal-badge" title="' + escapeHtml(goalLabel(task.goal)) + '">' + GOAL_MARK[task.goal] + "</span>"
+          : "";
+        li.innerHTML =
+          '<input type="checkbox" class="task-check" ' + (task.done ? "checked" : "") +
+          ' aria-label="' + escapeHtml(QUADRANT_NAMES[q]) + 'のタスクを完了にする">' +
+          badge +
+          '<span class="task-text">' + escapeHtml(task.text) + "</span>" +
+          '<button type="button" class="task-effect" data-state="' + task.effect + '" title="この目標への効き目を記録（クリックで切り替え）">' + EFFECT_SYMBOL[task.effect] + "</button>" +
+          '<button type="button" class="task-del" aria-label="削除">×</button>';
+        li.querySelector(".task-check").addEventListener("change", (e) => {
+          state.tasks[q][idx].done = e.target.checked;
+          persist();
+          renderTasks();
+        });
+        li.querySelector(".task-effect").addEventListener("click", () => {
+          const order = ["unset", "good", "mid", "bad"];
+          const next = order[(order.indexOf(state.tasks[q][idx].effect) + 1) % order.length];
+          state.tasks[q][idx].effect = next;
+          persist();
+          renderTasks();
+        });
+        li.querySelector(".task-del").addEventListener("click", () => {
+          state.tasks[q].splice(idx, 1);
+          persist();
+          renderTasks();
+        });
+        list.appendChild(li);
+      });
+      countEl.textContent = items.length + "件";
+    });
+    document.getElementById("progressChip").textContent = totalDone + " / " + total + " 完了";
+  }
+
+  function init() {
+    document.getElementById("monthGoal").value = state.month;
+    document.getElementById("monthGoal").addEventListener("input", (e) => {
+      state.month = e.target.value;
+      persist();
+    });
+
+    renderGoals();
+    refreshGoalSelectLabels();
+
+    document.querySelectorAll(".q-add").forEach((form) => {
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const q = form.dataset.q;
+        const input = form.querySelector('input[type="text"]');
+        const select = form.querySelector(".goal-select");
+        const text = input.value.trim();
+        if (!text) return;
+        const goalVal = select.value === "" ? null : Number(select.value);
+        state.tasks[q].push({ text: text, done: false, goal: goalVal, effect: "unset" });
+        input.value = "";
+        persist();
+        renderTasks();
+      });
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      if (!confirm("すべての目標とタスクを削除します。よろしいですか？")) return;
+      state = defaultState();
+      persist();
+      document.getElementById("monthGoal").value = "";
+      renderGoals();
+      refreshGoalSelectLabels();
+      renderTasks();
+    });
+
+    const today = new Date();
+    document.getElementById("todayLabel").textContent =
+      today.getFullYear() + "年" + (today.getMonth() + 1) + "月" + today.getDate() + "日";
+
+    renderTasks();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
