@@ -419,7 +419,9 @@
   .task-check:focus-visible,
   .task-del:focus-visible,
   .task-effect:focus-visible,
-  .goal-effect button:focus-visible {
+  .goal-effect button:focus-visible,
+  .log-record-btn:focus-visible,
+  .log-undo:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
@@ -515,6 +517,82 @@
     font-style: italic;
     padding: 4px 2px;
   }
+
+  /* ---- 操作ログ ---- */
+
+  .log-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .log-record-btn {
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 0.8rem;
+    border: 1px solid var(--accent);
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    border-radius: 8px;
+    padding: 8px 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.12s ease, color 0.12s ease;
+  }
+  .log-record-btn:hover { background: var(--accent); color: var(--paper-raised); }
+
+  .log-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 340px;
+    overflow-y: auto;
+  }
+
+  .log-item {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    background: var(--paper-raised);
+    border: 1px solid var(--line-soft);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.82rem;
+    flex-wrap: wrap;
+  }
+
+  .log-time {
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-faint);
+    font-size: 0.76rem;
+    flex-shrink: 0;
+  }
+
+  .log-text {
+    flex: 1;
+    min-width: 180px;
+    color: var(--ink-soft);
+  }
+
+  .log-undo {
+    font-family: var(--font-body);
+    font-size: 0.74rem;
+    font-weight: 700;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    color: var(--ink-soft);
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .log-undo:hover { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-soft); }
 
   footer.controls {
     display: flex;
@@ -653,6 +731,17 @@
     </div>
   </section>
 
+  <section class="block">
+    <div class="log-section-head">
+      <div class="block-label" style="margin-bottom:0;">
+        <span class="tag">操作ログ</span>
+        <span class="hint">削除・リセットは自動で記録され、あとから元に戻せます</span>
+      </div>
+      <button type="button" class="log-record-btn" id="logWeekBtn">今週の数値目標を記録する</button>
+    </div>
+    <ul class="log-list" id="logList"></ul>
+  </section>
+
   <footer class="controls">
     <span class="save-note" id="saveNote">保存しました</span>
     <button class="reset-btn" id="resetBtn" type="button">すべてクリア</button>
@@ -681,7 +770,8 @@
     return {
       month: "",
       weekGoals: [defaultGoal(), defaultGoal(), defaultGoal()],
-      tasks: { hot: [], important: [], urgent: [], none: [] }
+      tasks: { hot: [], important: [], urgent: [], none: [] },
+      log: []
     };
   }
 
@@ -692,6 +782,56 @@
     let effect = "unset";
     if (["good", "mid", "bad"].includes(t.effect)) effect = t.effect;
     return { text: t.text, done: !!t.done, goal: goal, effect: effect };
+  }
+
+  function sanitizeGoal(g) {
+    return {
+      name: typeof g?.name === "string" ? g.name : "",
+      target: typeof g?.target === "string" ? g.target : "",
+      actual: typeof g?.actual === "string" ? g.actual : "",
+      effect: ["good", "mid", "bad"].includes(g?.effect) ? g.effect : "unset"
+    };
+  }
+
+  function sanitizeLogEntry(e) {
+    if (!e || typeof e.id !== "string" || typeof e.ts !== "number") return null;
+    if (e.type === "task_deleted") {
+      if (!QUADRANTS.includes(e.quadrant)) return null;
+      const task = sanitizeTask(e.task);
+      if (!task) return null;
+      return { id: e.id, ts: e.ts, type: "task_deleted", quadrant: e.quadrant, task: task };
+    }
+    if (e.type === "week_snapshot") {
+      if (!Array.isArray(e.goals)) return null;
+      const goals = e.goals.slice(0, 3).map(sanitizeGoal);
+      while (goals.length < 3) goals.push(defaultGoal());
+      return { id: e.id, ts: e.ts, type: "week_snapshot", goals: goals };
+    }
+    if (e.type === "reset") {
+      const s = e.snapshot;
+      if (!s || typeof s !== "object") return null;
+      const weekGoals = Array.isArray(s.weekGoals) ? s.weekGoals.slice(0, 3).map(sanitizeGoal) : [];
+      while (weekGoals.length < 3) weekGoals.push(defaultGoal());
+      const tasks = { hot: [], important: [], urgent: [], none: [] };
+      if (s.tasks) {
+        QUADRANTS.forEach((q) => {
+          if (Array.isArray(s.tasks[q])) tasks[q] = s.tasks[q].map(sanitizeTask).filter(Boolean);
+        });
+      }
+      return {
+        id: e.id, ts: e.ts, type: "reset",
+        snapshot: { month: typeof s.month === "string" ? s.month : "", weekGoals: weekGoals, tasks: tasks }
+      };
+    }
+    return null;
+  }
+
+  function genId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  function trimLog(arr) {
+    return arr.slice(0, 100);
   }
 
   function loadState() {
@@ -720,6 +860,9 @@
               state.tasks[q] = parsed.tasks[q].map(sanitizeTask).filter(Boolean);
             }
           });
+        }
+        if (Array.isArray(parsed.log)) {
+          state.log = trimLog(parsed.log.map(sanitizeLogEntry).filter(Boolean));
         }
         return state;
       }
@@ -763,6 +906,21 @@
     note.classList.add("visible");
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => note.classList.remove("visible"), 1200);
+  }
+
+  function addLogEntry(entry) {
+    state.log = trimLog([entry, ...state.log]);
+    persist();
+  }
+
+  function formatTime(ts) {
+    const d = new Date(ts);
+    const pad = (n) => String(n).padStart(2, "0");
+    return (d.getMonth() + 1) + "/" + d.getDate() + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+
+  function effectText(e) {
+    return { unset: "未評価", good: "◎ 効いている", mid: "△ 様子見", bad: "✕ 効いていない" }[e] || "未評価";
   }
 
   function escapeHtml(str) {
@@ -883,15 +1041,77 @@
           renderTasks();
         });
         li.querySelector(".task-del").addEventListener("click", () => {
-          state.tasks[q].splice(idx, 1);
-          persist();
+          const removed = state.tasks[q].splice(idx, 1)[0];
+          addLogEntry({ id: genId(), ts: Date.now(), type: "task_deleted", quadrant: q, task: removed });
           renderTasks();
+          renderLog();
         });
         list.appendChild(li);
       });
       countEl.textContent = items.length + "件";
     });
     document.getElementById("progressChip").textContent = totalDone + " / " + total + " 完了";
+  }
+
+  function renderLog() {
+    const list = document.getElementById("logList");
+    list.innerHTML = "";
+    if (state.log.length === 0) {
+      const li = document.createElement("li");
+      li.className = "empty-hint";
+      li.textContent = "まだ記録はありません";
+      list.appendChild(li);
+      return;
+    }
+    state.log.forEach((entry) => {
+      const li = document.createElement("li");
+      li.className = "log-item";
+      let body = "";
+      let showUndo = false;
+      if (entry.type === "task_deleted") {
+        const t = entry.task;
+        const goalPart = t.goal !== null ? "・" + GOAL_MARK[t.goal] : "";
+        body = "「" + escapeHtml(t.text) + "」を削除（" + QUADRANT_NAMES[entry.quadrant] + goalPart + "）";
+        showUndo = true;
+      } else if (entry.type === "reset") {
+        body = "すべてクリアしました";
+        showUndo = true;
+      } else if (entry.type === "week_snapshot") {
+        body = "今週の記録　" + entry.goals.map((g, i) => {
+          const name = escapeHtml(g.name.trim() || "未設定");
+          const target = escapeHtml(g.target.trim() || "－");
+          const actual = escapeHtml(g.actual.trim() || "－");
+          return GOAL_MARK[i] + name + "：目標" + target + "／実績" + actual + "／" + effectText(g.effect);
+        }).join("　");
+      }
+      li.innerHTML =
+        '<span class="log-time">' + formatTime(entry.ts) + "</span>" +
+        '<span class="log-text">' + body + "</span>" +
+        (showUndo ? '<button type="button" class="log-undo" data-id="' + entry.id + '">元に戻す</button>' : "");
+      list.appendChild(li);
+    });
+
+    list.querySelectorAll(".log-undo").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.id;
+        const entry = state.log.find((e) => e.id === id);
+        if (!entry) return;
+        if (entry.type === "task_deleted") {
+          state.tasks[entry.quadrant].push(entry.task);
+        } else if (entry.type === "reset") {
+          state.month = entry.snapshot.month;
+          state.weekGoals = entry.snapshot.weekGoals;
+          state.tasks = entry.snapshot.tasks;
+        }
+        state.log = state.log.filter((e) => e.id !== id);
+        persist();
+        document.getElementById("monthGoal").value = state.month;
+        renderGoals();
+        refreshGoalSelectLabels();
+        renderTasks();
+        renderLog();
+      });
+    });
   }
 
   function init() {
@@ -920,14 +1140,29 @@
       });
     });
 
+    document.getElementById("logWeekBtn").addEventListener("click", () => {
+      const goals = state.weekGoals.map((g) => ({ ...g }));
+      addLogEntry({ id: genId(), ts: Date.now(), type: "week_snapshot", goals: goals });
+      renderLog();
+    });
+
     document.getElementById("resetBtn").addEventListener("click", () => {
-      if (!confirm("すべての目標とタスクを削除します。よろしいですか？")) return;
+      if (!confirm("すべての目標とタスクを削除します。よろしいですか？（操作ログに記録が残るので、あとで元に戻せます）")) return;
+      const entry = {
+        id: genId(),
+        ts: Date.now(),
+        type: "reset",
+        snapshot: { month: state.month, weekGoals: state.weekGoals, tasks: state.tasks }
+      };
+      const oldLog = trimLog([entry, ...state.log]);
       state = defaultState();
+      state.log = oldLog;
       persist();
       document.getElementById("monthGoal").value = "";
       renderGoals();
       refreshGoalSelectLabels();
       renderTasks();
+      renderLog();
     });
 
     const today = new Date();
@@ -935,6 +1170,7 @@
       today.getFullYear() + "年" + (today.getMonth() + 1) + "月" + today.getDate() + "日";
 
     renderTasks();
+    renderLog();
   }
 
   init();
