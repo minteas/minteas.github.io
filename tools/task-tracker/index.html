@@ -251,6 +251,7 @@
 
   .add-form input[type="text"] {
     flex: 1;
+    min-width: 0;
     font-family: var(--font-body);
     color: var(--ink);
     background: var(--paper);
@@ -281,6 +282,12 @@
   }
   .add-form button:hover { opacity: 0.85; }
   .add-form button:active { transform: scale(0.97); }
+
+  @media (max-width: 420px) {
+    .add-form { flex-wrap: wrap; }
+    .add-form input[type="text"] { flex-basis: 100%; }
+    .add-form button { flex: 1; }
+  }
 
   .record-list {
     list-style: none;
@@ -316,7 +323,13 @@
     white-space: pre-wrap;
   }
 
-  .record-del {
+  .record-actions {
+    flex-shrink: 0;
+    display: flex;
+    gap: 2px;
+  }
+
+  .record-edit, .record-del {
     flex-shrink: 0;
     border: none;
     background: transparent;
@@ -327,7 +340,50 @@
     padding: 2px 6px;
     border-radius: 4px;
   }
+  .record-edit:hover { color: var(--accent-ink); background: var(--accent-soft); }
   .record-del:hover { color: var(--danger); background: var(--danger-bg); }
+
+  .record-edit-input {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-body);
+    color: var(--ink);
+    background: var(--paper-raised);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 6px 9px;
+    font-size: 0.92rem;
+  }
+  .record-edit-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  .record-save {
+    flex-shrink: 0;
+    border: none;
+    background: var(--accent);
+    color: var(--paper-raised);
+    cursor: pointer;
+    font-size: 0.95rem;
+    line-height: 1;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .record-save:hover { opacity: 0.85; }
+
+  .record-cancel {
+    flex-shrink: 0;
+    border: none;
+    background: transparent;
+    color: var(--ink-faint);
+    cursor: pointer;
+    font-size: 1.05rem;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .record-cancel:hover { color: var(--danger); background: var(--danger-bg); }
 
   .empty-hint {
     font-size: 0.85rem;
@@ -571,6 +627,7 @@
       cell.innerHTML = String(cellDay) + (state.records[key] && state.records[key].length ? '<span class="day-dot"></span>' : "");
       cell.addEventListener("click", () => {
         selectedKey = key;
+        editingId = null;
         if (cellMonth !== viewMonth || cellYear !== viewYear) {
           viewYear = cellYear;
           viewMonth = cellMonth;
@@ -596,6 +653,7 @@
     viewYear = d.getFullYear();
     viewMonth = d.getMonth();
     selectedKey = todayKey();
+    editingId = null;
     renderCalendar();
     renderRecords();
   });
@@ -607,6 +665,19 @@
     const wd = WEEKDAY_JP[new Date(y, m - 1, d).getDay()];
     const suffix = selectedKey === todayKey() ? "（今日）" : "";
     return m + "月" + d + "日（" + wd + "）" + suffix;
+  }
+
+  let editingId = null;
+
+  function commitEdit(li, entry) {
+    const input = li.querySelector(".record-edit-input");
+    const text = input.value.trim();
+    if (text) {
+      entry.text = text;
+      persist();
+    }
+    editingId = null;
+    renderRecords();
   }
 
   function renderRecords() {
@@ -627,10 +698,42 @@
     entries.forEach((entry) => {
       const li = document.createElement("li");
       li.className = "record-item";
+
+      if (entry.id === editingId) {
+        li.innerHTML =
+          '<span class="record-time">' + formatTime(entry.ts) + "</span>" +
+          '<input type="text" class="record-edit-input" maxlength="200" value="' + escapeHtml(entry.text) + '">' +
+          '<span class="record-actions">' +
+            '<button type="button" class="record-save" aria-label="保存">✓</button>' +
+            '<button type="button" class="record-cancel" aria-label="キャンセル">×</button>' +
+          "</span>";
+        const editInput = li.querySelector(".record-edit-input");
+        li.querySelector(".record-save").addEventListener("click", () => commitEdit(li, entry));
+        li.querySelector(".record-cancel").addEventListener("click", () => {
+          editingId = null;
+          renderRecords();
+        });
+        editInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") { e.preventDefault(); commitEdit(li, entry); }
+          if (e.key === "Escape") { e.preventDefault(); editingId = null; renderRecords(); }
+        });
+        list.appendChild(li);
+        editInput.focus();
+        editInput.select();
+        return;
+      }
+
       li.innerHTML =
         '<span class="record-time">' + formatTime(entry.ts) + "</span>" +
         '<span class="record-text">' + escapeHtml(entry.text) + "</span>" +
-        '<button type="button" class="record-del" aria-label="削除">×</button>';
+        '<span class="record-actions">' +
+          '<button type="button" class="record-edit" aria-label="編集">✎</button>' +
+          '<button type="button" class="record-del" aria-label="削除">×</button>' +
+        "</span>";
+      li.querySelector(".record-edit").addEventListener("click", () => {
+        editingId = entry.id;
+        renderRecords();
+      });
       li.querySelector(".record-del").addEventListener("click", () => {
         state.records[selectedKey] = (state.records[selectedKey] || []).filter((e) => e.id !== entry.id);
         if (state.records[selectedKey].length === 0) delete state.records[selectedKey];
