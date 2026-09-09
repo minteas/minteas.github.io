@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>タスクトラッカー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --paper: #eef0ea;
+    --paper-raised: #f7f8f4;
+    --ink: #222a20;
+    --ink-soft: #5b6455;
+    --ink-faint: #8b937f;
+    --line: #ccd2c2;
+    --line-soft: #dbdfd2;
+    --accent: #3f6652;
+    --accent-soft: #dde8df;
+    --accent-ink: #1f3a2c;
+
+    --hi: #b5482f;
+    --hi-bg: #f3e2dc;
+    --mid: #b1791f;
+    --mid-bg: #f1e4cd;
+    --lo: #2e5266;
+    --lo-bg: #dfe6ea;
+
+    --shadow: 0 1px 2px rgba(34,42,32,0.06), 0 6px 16px rgba(34,42,32,0.05);
+    --radius: 14px;
+    --font-display: "Shippori Mincho", serif;
+    --font-body: "Zen Kaku Gothic New", "Hiragino Sans", sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #1b201a;
+      --paper-raised: #232a20;
+      --ink: #e9ece3;
+      --ink-soft: #aab29e;
+      --ink-faint: #737d68;
+      --line: #3a4234;
+      --line-soft: #2c3327;
+      --accent: #7fae94;
+      --accent-soft: #2a3a2e;
+      --accent-ink: #cfe6d7;
+
+      --hi: #e08a6f;
+      --hi-bg: #3c2620;
+      --mid: #d9ad5e;
+      --mid-bg: #362c1a;
+      --lo: #7fa8bd;
+      --lo-bg: #202d34;
+
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 20px rgba(0,0,0,0.35);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #1b201a;
+    --paper-raised: #232a20;
+    --ink: #e9ece3;
+    --ink-soft: #aab29e;
+    --ink-faint: #737d68;
+    --line: #3a4234;
+    --line-soft: #2c3327;
+    --accent: #7fae94;
+    --accent-soft: #2a3a2e;
+    --accent-ink: #cfe6d7;
+
+    --hi: #e08a6f;
+    --hi-bg: #3c2620;
+    --mid: #d9ad5e;
+    --mid-bg: #362c1a;
+    --lo: #7fa8bd;
+    --lo-bg: #202d34;
+
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 20px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  header.masthead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+
+  header.masthead h1 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(1.6rem, 3vw, 2.1rem);
+    margin: 0;
+    letter-spacing: 0.02em;
+  }
+
+  header.masthead .date-label {
+    font-size: 0.82rem;
+    color: var(--ink-faint);
+    letter-spacing: 0.05em;
+  }
+
+  section.block { margin-bottom: 28px; }
+
+  .block-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .block-label .tag {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    color: var(--accent-ink);
+    background: var(--accent-soft);
+    padding: 3px 10px;
+    border-radius: 999px;
+  }
+
+  .block-label .hint {
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+  }
+
+  input[type="text"], input[type="date"], select {
+    font-family: var(--font-body);
+    color: var(--ink);
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  input[type="text"]:focus, input[type="date"]:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  /* ---- 追加フォーム ---- */
+
+  .add-form {
+    background: var(--paper-raised);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .add-form input[type="text"] {
+    flex: 1 1 240px;
+    font-size: 0.95rem;
+  }
+
+  .add-form select { flex: 0 0 auto; font-size: 0.85rem; }
+  .add-form input[type="date"] { flex: 0 0 auto; font-size: 0.85rem; }
+
+  .add-form button {
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 0.88rem;
+    border: none;
+    border-radius: 8px;
+    padding: 0 18px;
+    cursor: pointer;
+    background: var(--ink);
+    color: var(--paper);
+    transition: opacity 0.15s ease, transform 0.1s ease;
+  }
+  .add-form button:hover { opacity: 0.85; }
+  .add-form button:active { transform: scale(0.97); }
+
+  /* ---- フィルタ ---- */
+
+  .filter-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 18px 0 12px;
+  }
+
+  .filter-tabs {
+    display: flex;
+    gap: 6px;
+  }
+
+  .filter-tabs button {
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    font-weight: 700;
+    border: 1px solid var(--line-soft);
+    background: var(--paper-raised);
+    color: var(--ink-faint);
+    border-radius: 999px;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+  .filter-tabs button.active {
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    border-color: var(--accent);
+  }
+
+  .progress-chip {
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+    background: var(--paper-raised);
+    border: 1px solid var(--line-soft);
+    padding: 5px 12px;
+    border-radius: 999px;
+  }
+
+  /* ---- タスクリスト ---- */
+
+  .task-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .task-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: var(--paper-raised);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    box-shadow: var(--shadow);
+  }
+
+  .task-item.overdue { border-color: var(--hi); }
+
+  .task-item.done { opacity: 0.7; }
+  .task-item.done .task-text {
+    text-decoration: line-through;
+    color: var(--ink-faint);
+  }
+
+  .task-check {
+    margin-top: 3px;
+    width: 17px;
+    height: 17px;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .task-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+
+  .task-text {
+    font-size: 0.95rem;
+    word-break: break-word;
+  }
+
+  .task-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-size: 0.72rem;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 2px 9px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .badge.category {
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+  }
+
+  .badge.priority-高 { background: var(--hi-bg); color: var(--hi); }
+  .badge.priority-中 { background: var(--mid-bg); color: var(--mid); }
+  .badge.priority-低 { background: var(--lo-bg); color: var(--lo); }
+
+  .badge.due {
+    background: var(--paper);
+    color: var(--ink-faint);
+    border: 1px solid var(--line-soft);
+  }
+  .task-item.overdue .badge.due {
+    background: var(--hi-bg);
+    color: var(--hi);
+    border-color: var(--hi);
+  }
+
+  .task-del {
+    border: none;
+    background: transparent;
+    color: var(--ink-faint);
+    cursor: pointer;
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .task-del:hover { color: var(--hi); background: var(--paper); }
+
+  .empty-hint {
+    font-size: 0.85rem;
+    color: var(--ink-faint);
+    font-style: italic;
+    padding: 20px 4px;
+    text-align: center;
+  }
+
+  /* ---- 操作ログ ---- */
+
+  .log-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+
+  .log-item {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    background: var(--paper-raised);
+    border: 1px solid var(--line-soft);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.82rem;
+    flex-wrap: wrap;
+  }
+
+  .log-time {
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-faint);
+    font-size: 0.76rem;
+    flex-shrink: 0;
+  }
+
+  .log-text { flex: 1; min-width: 180px; color: var(--ink-soft); }
+
+  .log-undo {
+    font-family: var(--font-body);
+    font-size: 0.74rem;
+    font-weight: 700;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    color: var(--ink-soft);
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .log-undo:hover { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-soft); }
+
+  button:focus-visible, input:focus-visible, select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  footer.controls {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: 28px;
+    gap: 12px;
+  }
+
+  .reset-btn {
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    color: var(--ink-faint);
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 7px 14px;
+    cursor: pointer;
+  }
+  .reset-btn:hover { color: var(--hi); border-color: var(--hi); }
+
+  .save-note {
+    font-size: 0.75rem;
+    color: var(--ink-faint);
+    margin-right: auto;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .save-note.visible { opacity: 1; }
+
+  @media (max-width: 600px) {
+    .add-form { flex-direction: column; align-items: stretch; }
+    .add-form select, .add-form input[type="date"], .add-form button { width: 100%; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <header class="masthead">
+    <h1>タスクトラッカー</h1>
+    <span class="date-label" id="todayLabel"></span>
+  </header>
+
+  <section class="block">
+    <div class="block-label">
+      <span class="tag">タスクを追加</span>
+      <span class="hint">内容・カテゴリ・優先度・期限（任意）を入力</span>
+    </div>
+    <form class="add-form" id="addForm">
+      <input type="text" id="taskText" placeholder="やることを入力" maxlength="140" required>
+      <select id="taskCategory">
+        <option value="企画">企画</option>
+        <option value="撮影">撮影</option>
+        <option value="編集">編集</option>
+        <option value="投稿">投稿</option>
+        <option value="分析">分析</option>
+        <option value="その他">その他</option>
+      </select>
+      <select id="taskPriority">
+        <option value="中" selected>優先度：中</option>
+        <option value="高">優先度：高</option>
+        <option value="低">優先度：低</option>
+      </select>
+      <input type="date" id="taskDue">
+      <button type="submit">追加</button>
+    </form>
+  </section>
+
+  <section class="block">
+    <div class="filter-row">
+      <div class="filter-tabs" id="filterTabs">
+        <button type="button" data-filter="all" class="active">すべて</button>
+        <button type="button" data-filter="active">未完了</button>
+        <button type="button" data-filter="done">完了</button>
+      </div>
+      <span class="progress-chip" id="progressChip">0 / 0 完了</span>
+    </div>
+    <ul class="task-list" id="taskList"></ul>
+  </section>
+
+  <section class="block">
+    <div class="block-label">
+      <span class="tag">操作ログ</span>
+      <span class="hint">削除・リセットは自動で記録され、あとから元に戻せます</span>
+    </div>
+    <ul class="log-list" id="logList"></ul>
+  </section>
+
+  <footer class="controls">
+    <span class="save-note" id="saveNote">保存しました</span>
+    <button class="reset-btn" id="clearDoneBtn" type="button">完了済みをまとめて削除</button>
+    <button class="reset-btn" id="resetBtn" type="button">すべてクリア</button>
+  </footer>
+</div>
+
+<script>
+(function () {
+  const STORAGE_KEY = "task-tracker-v1";
+  const CATEGORIES = ["企画", "撮影", "編集", "投稿", "分析", "その他"];
+  const PRIORITIES = ["高", "中", "低"];
+  const PRIORITY_ORDER = { "高": 0, "中": 1, "低": 2 };
+
+  function defaultState() {
+    return { tasks: [], log: [] };
+  }
+
+  function genId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  function trimLog(arr) {
+    return arr.slice(0, 100);
+  }
+
+  function sanitizeTask(t) {
+    if (!t || typeof t.id !== "string" || typeof t.text !== "string") return null;
+    return {
+      id: t.id,
+      text: t.text,
+      category: CATEGORIES.includes(t.category) ? t.category : "その他",
+      priority: PRIORITIES.includes(t.priority) ? t.priority : "中",
+      due: typeof t.due === "string" ? t.due : "",
+      done: !!t.done,
+      createdAt: typeof t.createdAt === "number" ? t.createdAt : Date.now(),
+      doneAt: typeof t.doneAt === "number" ? t.doneAt : null
+    };
+  }
+
+  function sanitizeLogEntry(e) {
+    if (!e || typeof e.id !== "string" || typeof e.ts !== "number") return null;
+    if (e.type === "task_deleted") {
+      const task = sanitizeTask(e.task);
+      if (!task) return null;
+      return { id: e.id, ts: e.ts, type: "task_deleted", task: task };
+    }
+    if (e.type === "bulk_deleted") {
+      if (!Array.isArray(e.tasks)) return null;
+      const tasks = e.tasks.map(sanitizeTask).filter(Boolean);
+      return { id: e.id, ts: e.ts, type: "bulk_deleted", tasks: tasks };
+    }
+    if (e.type === "reset") {
+      if (!Array.isArray(e.tasks)) return null;
+      const tasks = e.tasks.map(sanitizeTask).filter(Boolean);
+      return { id: e.id, ts: e.ts, type: "reset", tasks: tasks };
+    }
+    return null;
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return defaultState();
+      const parsed = JSON.parse(raw);
+      const state = defaultState();
+      if (Array.isArray(parsed.tasks)) {
+        state.tasks = parsed.tasks.map(sanitizeTask).filter(Boolean);
+      }
+      if (Array.isArray(parsed.log)) {
+        state.log = trimLog(parsed.log.map(sanitizeLogEntry).filter(Boolean));
+      }
+      return state;
+    } catch (e) {
+      return defaultState();
+    }
+  }
+
+  let state = loadState();
+  let filter = "all";
+  let saveTimer = null;
+
+  function persist() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const note = document.getElementById("saveNote");
+    note.classList.add("visible");
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => note.classList.remove("visible"), 1200);
+  }
+
+  function addLogEntry(entry) {
+    state.log = trimLog([entry, ...state.log]);
+    persist();
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function formatTime(ts) {
+    const d = new Date(ts);
+    const pad = (n) => String(n).padStart(2, "0");
+    return (d.getMonth() + 1) + "/" + d.getDate() + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+
+  function formatDue(due) {
+    if (!due) return "";
+    const [y, m, d] = due.split("-");
+    return m + "/" + d;
+  }
+
+  function todayStr() {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  }
+
+  function isOverdue(task) {
+    return !task.done && task.due && task.due < todayStr();
+  }
+
+  function sortedTasks() {
+    const list = state.tasks.slice();
+    list.sort((a, b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      if (!a.done) {
+        const aDue = a.due || "9999-99-99";
+        const bDue = b.due || "9999-99-99";
+        if (aDue !== bDue) return aDue < bDue ? -1 : 1;
+        const aPri = PRIORITY_ORDER[a.priority];
+        const bPri = PRIORITY_ORDER[b.priority];
+        if (aPri !== bPri) return aPri - bPri;
+        return a.createdAt - b.createdAt;
+      }
+      return (b.doneAt || 0) - (a.doneAt || 0);
+    });
+    return list;
+  }
+
+  function renderTasks() {
+    const listEl = document.getElementById("taskList");
+    listEl.innerHTML = "";
+    const all = sortedTasks();
+    const totalDone = all.filter((t) => t.done).length;
+    document.getElementById("progressChip").textContent = totalDone + " / " + all.length + " 完了";
+
+    const visible = all.filter((t) => {
+      if (filter === "active") return !t.done;
+      if (filter === "done") return t.done;
+      return true;
+    });
+
+    if (visible.length === 0) {
+      const hint = document.createElement("li");
+      hint.className = "empty-hint";
+      hint.textContent = state.tasks.length === 0 ? "まだタスクがありません" : "該当するタスクがありません";
+      listEl.appendChild(hint);
+      return;
+    }
+
+    visible.forEach((task) => {
+      const li = document.createElement("li");
+      li.className = "task-item" + (task.done ? " done" : "") + (isOverdue(task) ? " overdue" : "");
+      const dueBadge = task.due
+        ? '<span class="badge due">' + (isOverdue(task) ? "期限超過 " : "期限 ") + formatDue(task.due) + "</span>"
+        : "";
+      li.innerHTML =
+        '<input type="checkbox" class="task-check" ' + (task.done ? "checked" : "") + ' aria-label="完了にする">' +
+        '<div class="task-body">' +
+          '<span class="task-text">' + escapeHtml(task.text) + "</span>" +
+          '<div class="task-meta">' +
+            '<span class="badge category">' + escapeHtml(task.category) + "</span>" +
+            '<span class="badge priority-' + task.priority + '">優先度 ' + task.priority + "</span>" +
+            dueBadge +
+          "</div>" +
+        "</div>" +
+        '<button type="button" class="task-del" aria-label="削除">×</button>';
+
+      li.querySelector(".task-check").addEventListener("change", (e) => {
+        task.done = e.target.checked;
+        task.doneAt = task.done ? Date.now() : null;
+        persist();
+        renderTasks();
+      });
+      li.querySelector(".task-del").addEventListener("click", () => {
+        state.tasks = state.tasks.filter((t) => t.id !== task.id);
+        addLogEntry({ id: genId(), ts: Date.now(), type: "task_deleted", task: task });
+        renderTasks();
+        renderLog();
+      });
+      listEl.appendChild(li);
+    });
+  }
+
+  function renderLog() {
+    const list = document.getElementById("logList");
+    list.innerHTML = "";
+    if (state.log.length === 0) {
+      const li = document.createElement("li");
+      li.className = "empty-hint";
+      li.textContent = "まだ記録はありません";
+      list.appendChild(li);
+      return;
+    }
+    state.log.forEach((entry) => {
+      const li = document.createElement("li");
+      li.className = "log-item";
+      let body = "";
+      if (entry.type === "task_deleted") {
+        body = "「" + escapeHtml(entry.task.text) + "」を削除";
+      } else if (entry.type === "bulk_deleted") {
+        body = "完了済み " + entry.tasks.length + "件をまとめて削除";
+      } else if (entry.type === "reset") {
+        body = "すべてクリアしました（" + entry.tasks.length + "件）";
+      }
+      li.innerHTML =
+        '<span class="log-time">' + formatTime(entry.ts) + "</span>" +
+        '<span class="log-text">' + body + "</span>" +
+        '<button type="button" class="log-undo" data-id="' + entry.id + '">元に戻す</button>';
+      list.appendChild(li);
+    });
+
+    list.querySelectorAll(".log-undo").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.id;
+        const entry = state.log.find((e) => e.id === id);
+        if (!entry) return;
+        if (entry.type === "task_deleted") {
+          state.tasks.push(entry.task);
+        } else if (entry.type === "bulk_deleted" || entry.type === "reset") {
+          state.tasks = state.tasks.concat(entry.tasks);
+        }
+        state.log = state.log.filter((e) => e.id !== id);
+        persist();
+        renderTasks();
+        renderLog();
+      });
+    });
+  }
+
+  function init() {
+    const today = new Date();
+    document.getElementById("todayLabel").textContent =
+      today.getFullYear() + "年" + (today.getMonth() + 1) + "月" + today.getDate() + "日";
+
+    document.getElementById("addForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const textEl = document.getElementById("taskText");
+      const text = textEl.value.trim();
+      if (!text) return;
+      const task = {
+        id: genId(),
+        text: text,
+        category: document.getElementById("taskCategory").value,
+        priority: document.getElementById("taskPriority").value,
+        due: document.getElementById("taskDue").value,
+        done: false,
+        createdAt: Date.now(),
+        doneAt: null
+      };
+      state.tasks.push(task);
+      textEl.value = "";
+      document.getElementById("taskDue").value = "";
+      persist();
+      renderTasks();
+      textEl.focus();
+    });
+
+    document.querySelectorAll("#filterTabs button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        filter = btn.dataset.filter;
+        document.querySelectorAll("#filterTabs button").forEach((b) => b.classList.toggle("active", b === btn));
+        renderTasks();
+      });
+    });
+
+    document.getElementById("clearDoneBtn").addEventListener("click", () => {
+      const doneTasks = state.tasks.filter((t) => t.done);
+      if (doneTasks.length === 0) return;
+      state.tasks = state.tasks.filter((t) => !t.done);
+      addLogEntry({ id: genId(), ts: Date.now(), type: "bulk_deleted", tasks: doneTasks });
+      renderTasks();
+      renderLog();
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      if (state.tasks.length === 0) return;
+      if (!confirm("すべてのタスクを削除します。よろしいですか？（操作ログから元に戻せます）")) return;
+      const entry = { id: genId(), ts: Date.now(), type: "reset", tasks: state.tasks };
+      const oldLog = trimLog([entry, ...state.log]);
+      state = defaultState();
+      state.log = oldLog;
+      persist();
+      renderTasks();
+      renderLog();
+    });
+
+    renderTasks();
+    renderLog();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
