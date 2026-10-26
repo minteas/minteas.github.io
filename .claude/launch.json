@@ -4,21 +4,62 @@
     {
       "name": "packing-checklist",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8934", "--directory", "/Users/ijiri/packing-checklist"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8934",
+        "--directory",
+        "/Users/ijiri/packing-checklist"
+      ],
       "port": 8934
     },
     {
       "name": "mintys-lp",
       "runtimeExecutable": "sh",
-      "runtimeArgs": ["-c", "python3 -m http.server \"$PORT\" --directory /Users/ijiri/mintys-lp"],
+      "runtimeArgs": [
+        "-c",
+        "python3 -m http.server \"$PORT\" --directory /Users/ijiri/mintys-lp"
+      ],
       "port": 8935,
       "autoPort": true
     },
     {
       "name": "ijiri-performance-lp",
       "runtimeExecutable": "sh",
-      "runtimeArgs": ["-c", "python3 -m http.server \"$PORT\" --directory /Users/ijiri/ijiri-performance-lp"],
+      "runtimeArgs": [
+        "-c",
+        "python3 -m http.server \"$PORT\" --directory /Users/ijiri/ijiri-performance-lp"
+      ],
       "port": 8936,
+      "autoPort": true
+    },
+    {
+      "name": "pt-tracker",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/ijiri/Desktop/pt-tracker && npm run dev -- -p 8937"
+      ],
+      "port": 8937
+    },
+    {
+      "name": "minary-lp",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "python3 -m http.server \"$PORT\" --directory /Users/ijiri/minary-lp"
+      ],
+      "port": 8938,
+      "autoPort": true
+    },
+    {
+      "name": "takano-weakpoint-lp",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "python3 -m http.server \"$PORT\" --directory /Users/ijiri/takano-weakpoint-lp"
+      ],
+      "port": 8939,
       "autoPort": true
     }
   ]
