@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f1115">
+<title>ラウンドタイマー</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e222c;
+    --border: #2a2f3a;
+    --text: #eef0f4;
+    --muted: #9aa2b1;
+    --accent: #5ee6b0;
+    --accent-2: #7aa8ff;
+    --danger: #ff6b6b;
+    --prep: #ffc857;
+    --work: #ff6b6b;
+    --rest: #7aa8ff;
+    --done: #5ee6b0;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+  }
+  .wrap { max-width: 560px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 24px; }
+  header h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: 0.02em; }
+  header p { color: var(--muted); font-size: 13px; margin: 0; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 18px;
+  }
+  .card h2 {
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0 0 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  /* プリセット */
+  .presets { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .preset-btn {
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 10px;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+  }
+  .preset-btn b { display: block; font-size: 14px; }
+  .preset-btn span { font-size: 12px; color: var(--muted); }
+  .preset-btn.active { border-color: var(--accent); }
+
+  /* 設定行 */
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .row:last-child { border-bottom: none; }
+  .row .label { font-size: 15px; }
+  .row .label small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .stepper { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .stepper button {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 20px;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+  }
+  .stepper button:active { background: var(--border); }
+  .stepper .val {
+    min-width: 64px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .total { text-align: center; color: var(--muted); font-size: 13px; margin-top: 12px; }
+  .total b { color: var(--text); font-size: 16px; }
+
+  /* 音量 */
+  .sound-row { display: flex; align-items: center; gap: 12px; }
+  .sound-row input[type=range] { flex: 1; accent-color: var(--accent); }
+  .ghost-btn {
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 999px;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .primary-btn {
+    width: 100%;
+    padding: 18px;
+    font-size: 18px;
+    font-weight: 700;
+    border: none;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: #0f1115;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  /* タイマー画面 */
+  #timerView {
+    display: none;
+    position: fixed;
+    inset: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+    background: var(--bg);
+    transition: background-color .3s;
+  }
+  body.running #timerView { display: flex; }
+  body.running #setupView { display: none; }
+  #timerView[data-phase=prep] { --phase: var(--prep); }
+  #timerView[data-phase=work] { --phase: var(--work); }
+  #timerView[data-phase=rest] { --phase: var(--rest); }
+  #timerView[data-phase=done] { --phase: var(--done); }
+  #timerView { background: color-mix(in srgb, var(--phase, var(--bg)) 14%, var(--bg)); }
+
+  .t-top { text-align: center; width: 100%; }
+  .phase-label {
+    display: inline-block;
+    padding: 6px 18px;
+    border-radius: 999px;
+    background: var(--phase);
+    color: #0f1115;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: 0.1em;
+  }
+  .round-label { margin-top: 14px; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .round-label span { color: var(--muted); font-weight: 500; }
+  .t-center { text-align: center; width: 100%; }
+  .time-big {
+    font-size: min(34vw, 30vh);
+    line-height: 1;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--phase);
+    letter-spacing: -0.02em;
+  }
+  .next-label { margin-top: 10px; color: var(--muted); font-size: 15px; min-height: 1.4em; }
+  .progress {
+    width: 100%; max-width: 560px; height: 8px;
+    margin: 18px auto 0;
+    background: var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .progress > div { height: 100%; width: 0; background: var(--phase); }
+  .t-bottom { width: 100%; max-width: 560px; display: grid; grid-template-columns: 1fr 1.6fr 1fr; gap: 10px; }
+  .t-bottom button {
+    padding: 18px 8px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    font: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .t-bottom #pauseBtn { background: var(--phase); color: #0f1115; border: none; font-size: 18px; }
+  .elapsed { text-align: center; color: var(--muted); font-size: 13px; margin-top: 8px; font-variant-numeric: tabular-nums; }
+
+  @media (orientation: landscape) and (max-height: 500px) {
+    .time-big { font-size: 42vh; }
+    .round-label { margin-top: 6px; font-size: 18px; }
+    .t-bottom button { padding: 12px 8px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="setupView" class="wrap">
+  <header>
+    <h1>ラウンドタイマー</h1>
+    <p>格闘技・HIIT用インターバルタイマー</p>
+  </header>
+
+  <div class="card">
+    <h2>プリセット</h2>
+    <div class="presets" id="presets"></div>
+  </div>
+
+  <div class="card">
+    <h2>設定</h2>
+    <div id="settings"></div>
+    <div class="total">合計時間 <b id="totalTime">0:00</b></div>
+  </div>
+
+  <div class="card">
+    <h2>サウンド</h2>
+    <div class="sound-row">
+      <span>音量</span>
+      <input type="range" id="volume" min="0" max="1" step="0.05">
+      <button class="ghost-btn" id="testSound">テスト</button>
+    </div>
+  </div>
+
+  <button class="primary-btn" id="startBtn">スタート</button>
+</div>
+
+<div id="timerView" data-phase="prep">
+  <div class="t-top">
+    <div class="phase-label" id="phaseLabel">準備</div>
+    <div class="round-label" id="roundLabel"></div>
+  </div>
+  <div class="t-center">
+    <div class="time-big" id="timeBig">0:00</div>
+    <div class="next-label" id="nextLabel"></div>
+    <div class="progress"><div id="progressBar"></div></div>
+  </div>
+  <div style="width:100%;max-width:560px">
+    <div class="t-bottom">
+      <button id="stopBtn">終了</button>
+      <button id="pauseBtn">一時停止</button>
+      <button id="skipBtn">スキップ</button>
+    </div>
+    <div class="elapsed" id="elapsed"></div>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = "intervalTimer.v1";
+
+  const PRESETS = [
+    { name: "ボクシング", work: 180, rest: 60, rounds: 12, prep: 10, warn: 10 },
+    { name: "キックボクシング", work: 180, rest: 60, rounds: 5, prep: 10, warn: 10 },
+    { name: "テコンドー", work: 120, rest: 60, rounds: 3, prep: 10, warn: 10 },
+    { name: "テコンドー練習", work: 60, rest: 20, rounds: 20, prep: 10, warn: 10 },
+    { name: "MMA", work: 300, rest: 60, rounds: 3, prep: 10, warn: 10 },
+    { name: "柔術スパー", work: 360, rest: 60, rounds: 5, prep: 10, warn: 30 },
+    { name: "タバタ", work: 20, rest: 10, rounds: 8, prep: 10, warn: 0 },
+    { name: "HIIT 40/20", work: 40, rest: 20, rounds: 10, prep: 10, warn: 0 },
+  ];
+
+  // 各設定項目の範囲と増減幅
+  const FIELDS = [
+    { key: "work",   label: "運動時間",   min: 5, max: 3600, step: 5, fmt: "time" },
+    { key: "rest",   label: "インターバル", min: 0, max: 1800, step: 5, fmt: "time", note: "0にすると休憩なし" },
+    { key: "rounds", label: "ラウンド数",  min: 1, max: 99,   step: 1, fmt: "num" },
+    { key: "prep",   label: "準備時間",   min: 0, max: 60,   step: 5, fmt: "time", note: "スタート前のカウント" },
+    { key: "warn",   label: "残り時間の合図", min: 0, max: 60, step: 5, fmt: "time", note: "運動終了前に拍子木（0でオフ）" },
+  ];
+
+  const DEFAULTS = { ...PRESETS[0], volume: 0.8 };
+
+  const fmtTime = (sec) => {
+    sec = Math.max(0, Math.ceil(sec));
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+  };
+
+  // ---------- 設定の保存 ----------
+  function loadSettings() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return { ...DEFAULTS, ...JSON.parse(raw) };
+    } catch (e) {}
+    return { ...DEFAULTS };
+  }
+  function saveSettings() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch (e) {}
+  }
+
+  let settings = loadSettings();
+
+  // ---------- 設定画面 ----------
+  const $ = (id) => document.getElementById(id);
+
+  function renderPresets() {
+    $("presets").innerHTML = "";
+    PRESETS.forEach((p) => {
+      const btn = document.createElement("button");
+      btn.className = "preset-btn";
+      const active = FIELDS.every((f) => settings[f.key] === p[f.key]);
+      if (active) btn.classList.add("active");
+      btn.innerHTML = `<b>${p.name}</b><span>${fmtTime(p.work)} × ${p.rounds}R<br>休憩 ${fmtTime(p.rest)}</span>`;
+      btn.onclick = () => {
+        FIELDS.forEach((f) => (settings[f.key] = p[f.key]));
+        saveSettings();
+        renderAll();
+      };
+      $("presets").appendChild(btn);
+    });
+  }
+
+  function renderSettings() {
+    const box = $("settings");
+    box.innerHTML = "";
+    FIELDS.forEach((f) => {
+      const row = document.createElement("div");
+      row.className = "row";
+      const v = settings[f.key];
+      const shown = f.fmt === "time" ? (v === 0 && f.key !== "work" ? "なし" : fmtTime(v)) : `${v}`;
+      row.innerHTML = `
+        <div class="label">${f.label}${f.note ? `<small>${f.note}</small>` : ""}</div>
+        <div class="stepper">
+          <button data-d="-1" aria-label="${f.label}を減らす">−</button>
+          <div class="val">${shown}</div>
+          <button data-d="1" aria-label="${f.label}を増やす">＋</button>
+        </div>`;
+      row.querySelectorAll("button").forEach((b) => attachRepeat(b, () => step(f, Number(b.dataset.d))));
+      box.appendChild(row);
+    });
+    $("totalTime").textContent = fmtTime(totalSeconds());
+  }
+
+  // 長押しで連続増減
+  function attachRepeat(btn, fn) {
+    let timer = null, delay = null;
+    const stop = () => { clearTimeout(delay); clearInterval(timer); timer = delay = null; };
+    btn.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      fn();
+      delay = setTimeout(() => (timer = setInterval(fn, 80)), 400);
+    });
+    ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => btn.addEventListener(ev, stop));
+  }
+
+  function step(f, dir) {
+    // 1分を超える時間は15秒刻みにして長い時間も設定しやすくする
+    let inc = f.step;
+    if (f.fmt === "time" && f.step === 5) {
+      const cur = settings[f.key];
+      if (cur > 60 || (cur === 60 && dir > 0)) inc = 15;
+    }
+    let next = settings[f.key] + inc * dir;
+    if (inc === 15) next = Math.round(next / 15) * 15;
+    settings[f.key] = Math.min(f.max, Math.max(f.min, next));
+    saveSettings();
+    renderPresets();
+    renderSettings();
+  }
+
+  function totalSeconds() {
+    const s = settings;
+    return s.prep + s.work * s.rounds + s.rest * (s.rounds - 1);
+  }
+
+  function renderAll() {
+    renderPresets();
+    renderSettings();
+    $("volume").value = settings.volume;
+  }
+
+  $("volume").addEventListener("input", (e) => {
+    settings.volume = Number(e.target.value);
+    saveSettings();
+  });
+  $("testSound").addEventListener("click", () => {
+    ensureAudio();
+    sound.bell(1);
+  });
+
+  // ---------- サウンド（Web Audio で生成） ----------
+  let ctx = null;
+  function ensureAudio() {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === "suspended") ctx.resume();
+  }
+
+  function out(gainValue) {
+    const g = ctx.createGain();
+    g.gain.value = gainValue * settings.volume;
+    g.connect(ctx.destination);
+    return g;
+  }
+
+  const sound = {
+    // ゴングのような金属音。count回鳴らす
+    bell(count = 1, gap = 0.35) {
+      if (!ctx) return;
+      for (let i = 0; i < count; i++) {
+        const t = ctx.currentTime + i * gap;
+        const master = out(0.5);
+        [[820, 1], [1640 * 1.01, 0.5], [2460 * 0.99, 0.3], [3500, 0.15]].forEach(([freq, amp]) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = "sine";
+          o.frequency.value = freq;
+          g.gain.setValueAtTime(0, t);
+          g.gain.linearRampToValueAtTime(amp, t + 0.005);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 1.6);
+          o.connect(g).connect(master);
+          o.start(t);
+          o.stop(t + 1.7);
+        });
+      }
+    },
+    // カウントダウン用の短いビープ
+    beep(freq = 880, dur = 0.15) {
+      if (!ctx) return;
+      const t = ctx.currentTime;
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = "square";
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.25, t + 0.005);
+      g.gain.setValueAtTime(0.25, t + dur - 0.02);
+      g.gain.linearRampToValueAtTime(0, t + dur);
+      o.connect(g).connect(out(1));
+      o.start(t);
+      o.stop(t + dur);
+    },
+    // 拍子木（残り時間の合図）
+    clap() {
+      if (!ctx) return;
+      const len = Math.floor(ctx.sampleRate * 0.06);
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 4);
+      [0, 0.14].forEach((offset) => {
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        const bp = ctx.createBiquadFilter();
+        bp.type = "bandpass";
+        bp.frequency.value = 1800;
+        bp.Q.value = 2.5;
+        src.connect(bp).connect(out(2.2));
+        src.start(ctx.currentTime + offset);
+      });
+    },
+  };
+
+  function vibrate(pattern) {
+    if (navigator.vibrate) navigator.vibrate(pattern);
+  }
+
+  // ---------- タイマー本体 ----------
+  // フェーズの並びを先に組み立て、終了時刻ベースで進める（タブが裏に回っても時間がずれない）
+  function buildPhases() {
+    const s = settings;
+    const phases = [];
+    if (s.prep > 0) phases.push({ type: "prep", dur: s.prep, round: 1 });
+    for (let r = 1; r <= s.rounds; r++) {
+      phases.push({ type: "work", dur: s.work, round: r });
+      if (r < s.rounds && s.rest > 0) phases.push({ type: "rest", dur: s.rest, round: r });
+    }
+    return phases;
+  }
+
+  const PHASE_NAME = { prep: "準備", work: "運動", rest: "休憩", done: "終了" };
+
+  let run = null; // { phases, idx, endAt, pausedLeft, lastSec, warned, startedAt, tickId }
+
+  function startTimer() {
+    ensureAudio();
+    const phases = buildPhases();
+    run = { phases, idx: -1, endAt: 0, pausedLeft: null, lastSec: null, warned: false, tickId: null, finished: false };
+    document.body.classList.add("running");
+    requestWakeLock();
+    enterPhase(0);
+    run.tickId = setInterval(tick, 100);
+    tick();
+  }
+
+  function enterPhase(idx, at = performance.now()) {
+    run.idx = idx;
+    const p = run.phases[idx];
+    run.endAt = at + p.dur * 1000;
+    run.lastSec = null;
+    run.warned = false;
+    if (p.type === "work") {
+      sound.bell(1);
+      vibrate(400);
+    } else if (p.type === "rest") {
+      sound.bell(2);
+      vibrate([200, 100, 200]);
+    }
+    updatePhaseUI();
+  }
+
+  function finish() {
+    run.finished = true;
+    clearInterval(run.tickId);
+    sound.bell(3);
+    vibrate([300, 100, 300, 100, 600]);
+    releaseWakeLock();
+    $("timerView").dataset.phase = "done";
+    $("phaseLabel").textContent = PHASE_NAME.done;
+    $("roundLabel").innerHTML = `${settings.rounds}ラウンド完了`;
+    $("timeBig").textContent = "0:00";
+    $("nextLabel").textContent = "おつかれさまでした";
+    $("progressBar").style.width = "100%";
+    $("pauseBtn").textContent = "もう一度";
+    $("skipBtn").disabled = true;
+    $("skipBtn").style.opacity = 0.4;
+  }
+
+  function tick() {
+    if (!run || run.finished || run.pausedLeft !== null) return;
+    const now = performance.now();
+    // 裏タブで間引かれた場合も複数フェーズを正しく進める
+    while (now >= run.endAt) {
+      const nextIdx = run.idx + 1;
+      if (nextIdx >= run.phases.length) return finish();
+      enterPhase(nextIdx, run.endAt);
+    }
+    const p = run.phases[run.idx];
+    const leftMs = run.endAt - now;
+    const leftSec = Math.ceil(leftMs / 1000);
+
+    if (leftSec !== run.lastSec) {
+      run.lastSec = leftSec;
+      // 次のフェーズに切り替わる直前の 3・2・1 カウント
+      if (leftSec <= 3 && leftSec >= 1 && p.dur > 3) sound.beep(leftSec === 1 ? 1100 : 880);
+      // 残り時間の合図（運動中のみ）
+      if (p.type === "work" && settings.warn > 0 && settings.warn < p.dur && leftSec === settings.warn && !run.warned) {
+        run.warned = true;
+        sound.clap();
+        vibrate([80, 60, 80]);
+      }
+    }
+    renderTime(leftMs, p);
+  }
+
+  function renderTime(leftMs, p) {
+    $("timeBig").textContent = fmtTime(leftMs / 1000);
+    $("progressBar").style.width = `${Math.min(100, (1 - leftMs / (p.dur * 1000)) * 100)}%`;
+    const done = run.phases.slice(0, run.idx).reduce((a, x) => a + x.dur, 0) + (p.dur - leftMs / 1000);
+    const total = run.phases.reduce((a, x) => a + x.dur, 0);
+    $("elapsed").textContent = `経過 ${fmtTime(Math.floor(done))} / 合計 ${fmtTime(total)}`;
+  }
+
+  function updatePhaseUI() {
+    const p = run.phases[run.idx];
+    $("timerView").dataset.phase = p.type;
+    $("phaseLabel").textContent = PHASE_NAME[p.type];
+    $("roundLabel").innerHTML = `ラウンド ${p.round} <span>/ ${settings.rounds}</span>`;
+    const next = run.phases[run.idx + 1];
+    $("nextLabel").textContent = next
+      ? `次: ${PHASE_NAME[next.type]} ${fmtTime(next.dur)}`
+      : "ラストラウンド";
+    $("pauseBtn").textContent = "一時停止";
+    $("skipBtn").disabled = false;
+    $("skipBtn").style.opacity = 1;
+  }
+
+  function togglePause() {
+    if (!run) return;
+    if (run.finished) {
+      clearInterval(run.tickId);
+      return startTimer();
+    }
+    ensureAudio();
+    if (run.pausedLeft === null) {
+      run.pausedLeft = run.endAt - performance.now();
+      $("pauseBtn").textContent = "再開";
+      $("nextLabel").textContent = "一時停止中";
+      releaseWakeLock();
+    } else {
+      run.endAt = performance.now() + run.pausedLeft;
+      run.pausedLeft = null;
+      requestWakeLock();
+      updatePhaseUI();
+      tick();
+    }
+  }
+
+  function skipPhase() {
+    if (!run || run.finished) return;
+    const nextIdx = run.idx + 1;
+    const wasPaused = run.pausedLeft !== null;
+    if (nextIdx >= run.phases.length) return finish();
+    enterPhase(nextIdx);
+    if (wasPaused) {
+      run.pausedLeft = run.phases[nextIdx].dur * 1000;
+      $("pauseBtn").textContent = "再開";
+      renderTime(run.pausedLeft, run.phases[nextIdx]);
+    } else {
+      tick();
+    }
+  }
+
+  function stopTimer() {
+    if (run && !run.finished && !confirm("タイマーを終了しますか？")) return;
+    if (run) clearInterval(run.tickId);
+    run = null;
+    releaseWakeLock();
+    document.body.classList.remove("running");
+  }
+
+  // ---------- 画面スリープ防止 ----------
+  let wakeLock = null;
+  async function requestWakeLock() {
+    try {
+      if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen");
+    } catch (e) {}
+  }
+  function releaseWakeLock() {
+    if (wakeLock) wakeLock.release().catch(() => {});
+    wakeLock = null;
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && run && !run.finished && run.pausedLeft === null) {
+      requestWakeLock();
+      ensureAudio();
+    }
+  });
+
+  // ---------- イベント ----------
+  $("startBtn").addEventListener("click", startTimer);
+  $("pauseBtn").addEventListener("click", togglePause);
+  $("skipBtn").addEventListener("click", skipPhase);
+  $("stopBtn").addEventListener("click", stopTimer);
+  document.addEventListener("keydown", (e) => {
+    if (e.code !== "Space") return;
+    e.preventDefault();
+    run ? togglePause() : startTimer();
+  });
+
+  renderAll();
+</script>
+</body>
+</html>
