@@ -399,14 +399,17 @@
   });
   $("testSound").addEventListener("click", () => {
     ensureAudio();
-    sound.bell(1);
+    sound.start();
   });
 
   // ---------- サウンド（Web Audio で生成） ----------
   let ctx = null;
   function ensureAudio() {
+    // iPhone の消音スイッチがオンでも鳴るようにする（対応ブラウザのみ）
+    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {}
     if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
-    if (ctx.state === "suspended") ctx.resume();
+    // iOS は画面ロックなどで "interrupted" になることがある
+    if (ctx.state !== "running") ctx.resume().catch(() => {});
   }
 
   function out(gainValue) {
@@ -452,6 +455,29 @@
       o.connect(g).connect(out(1));
       o.start(t);
       o.stop(t + dur);
+    },
+    // 長いトーン。開始は高い「ピーッ」、終了は低い「ブーッ」
+    longTone(freq, dur, type = "square", level = 0.3) {
+      if (!ctx) return;
+      const t = ctx.currentTime;
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = type;
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(level, t + 0.01);
+      g.gain.setValueAtTime(level, t + dur - 0.08);
+      g.gain.linearRampToValueAtTime(0, t + dur);
+      o.connect(g).connect(out(1));
+      o.start(t);
+      o.stop(t + dur);
+    },
+    start() {
+      this.longTone(1320, 0.8);
+      this.bell(1);
+    },
+    end() {
+      this.longTone(330, 1.0, "sawtooth", 0.5);
     },
     // 拍子木（残り時間の合図）
     clap() {
@@ -511,11 +537,12 @@
     run.endAt = at + p.dur * 1000;
     run.lastSec = null;
     run.warned = false;
+    ensureAudio();
     if (p.type === "work") {
-      sound.bell(1);
+      sound.start();
       vibrate(400);
     } else if (p.type === "rest") {
-      sound.bell(2);
+      sound.end();
       vibrate([200, 100, 200]);
     }
     updatePhaseUI();
@@ -524,6 +551,8 @@
   function finish() {
     run.finished = true;
     clearInterval(run.tickId);
+    ensureAudio();
+    sound.end();
     sound.bell(3);
     vibrate([300, 100, 300, 100, 600]);
     releaseWakeLock();
