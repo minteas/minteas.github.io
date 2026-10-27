@@ -195,6 +195,7 @@
     touch-action: manipulation;
   }
   .t-bottom #pauseBtn { background: var(--phase); color: #0f1115; border: none; font-size: 18px; }
+  .t-bottom #stopBtn.armed { background: var(--danger); color: #0f1115; border-color: var(--danger); font-size: 13px; }
   .elapsed { text-align: center; color: var(--muted); font-size: 13px; margin-top: 8px; font-variant-numeric: tabular-nums; }
 
   @media (orientation: landscape) and (max-height: 500px) {
@@ -610,8 +611,24 @@
     }
   }
 
+  // 誤タップ防止のため、動作中は2回タップで終了（confirm() はブラウザによってブロックされるため使わない）
+  let stopArmTimer = null;
+  function resetStopBtn() {
+    clearTimeout(stopArmTimer);
+    stopArmTimer = null;
+    $("stopBtn").classList.remove("armed");
+    $("stopBtn").textContent = "終了";
+  }
+
   function stopTimer() {
-    if (run && !run.finished && !confirm("タイマーを終了しますか？")) return;
+    const needsConfirm = run && !run.finished && run.pausedLeft === null;
+    if (needsConfirm && !stopArmTimer) {
+      $("stopBtn").classList.add("armed");
+      $("stopBtn").textContent = "もう一度で終了";
+      stopArmTimer = setTimeout(resetStopBtn, 3000);
+      return;
+    }
+    resetStopBtn();
     if (run) clearInterval(run.tickId);
     run = null;
     releaseWakeLock();
