@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>くじ引きルーレット</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FFF8EE; --card:#FFFFFF; --ink:#2B2118; --sub:#7A6B5D; --line:#EADFCF;
+    --accent:#E2463B; --accent-d:#B9322A; --gold:#F2B33D; --ok:#2F9E8F; --warn:#D9822B;
+    --radius:18px; --shadow:0 6px 24px rgba(80,50,20,.08);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Meiryo",sans-serif;-webkit-font-smoothing:antialiased}
+  button,input,textarea{font-family:inherit;color:inherit}
+  button{cursor:pointer}
+  .wrap{max-width:1120px;margin:0 auto;padding:16px 16px 48px}
+
+  /* header */
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .logo{width:40px;height:40px;border-radius:50%;background:conic-gradient(var(--accent) 0 25%,var(--gold) 0 50%,var(--ok) 0 75%,#3D6FD6 0);box-shadow:inset 0 0 0 4px #fff,0 2px 8px rgba(0,0,0,.12)}
+  h1{font-size:22px;margin:0;font-weight:900;letter-spacing:.02em}
+  .tabs{display:flex;background:#F3E9DA;padding:4px;border-radius:999px;gap:4px}
+  .tab{border:0;background:transparent;padding:10px 20px;border-radius:999px;font-weight:700;font-size:15px;color:var(--sub);transition:.15s}
+  .tab[aria-selected="true"]{background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(80,50,20,.12)}
+
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
+  .card h2{font-size:17px;margin:0 0 14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .muted{color:var(--sub);font-size:13px}
+
+  /* roulette view */
+  .grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:20px;align-items:start}
+  @media (max-width:860px){.grid{grid-template-columns:1fr}}
+  .stage{display:flex;flex-direction:column;align-items:center;gap:18px;padding:24px 16px}
+  .wheel-box{position:relative;width:min(88vw,500px);aspect-ratio:1}
+  #wheel{width:100%;height:100%;display:block}
+  .pointer{position:absolute;left:50%;top:-6px;transform:translateX(-50%);width:44px;height:54px;filter:drop-shadow(0 3px 4px rgba(0,0,0,.25));z-index:2}
+  .hub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:24%;aspect-ratio:1;border-radius:50%;border:0;
+       background:radial-gradient(circle at 35% 30%,#FF7A6E,var(--accent) 55%,var(--accent-d));color:#fff;font-weight:900;font-size:clamp(16px,4.2vw,24px);
+       box-shadow:0 0 0 6px #fff,0 6px 18px rgba(185,50,42,.45);transition:transform .12s}
+  .hub:hover{transform:translate(-50%,-50%) scale(1.04)}
+  .hub:active{transform:translate(-50%,-50%) scale(.97)}
+  .hub:disabled{filter:grayscale(.4) brightness(.95);cursor:default}
+  .spin-btn{border:0;background:var(--accent);color:#fff;font-weight:900;font-size:20px;padding:16px 56px;border-radius:999px;box-shadow:0 6px 0 var(--accent-d),0 10px 20px rgba(185,50,42,.3);transition:transform .08s,box-shadow .08s}
+  .spin-btn:active{transform:translateY(4px);box-shadow:0 2px 0 var(--accent-d),0 4px 10px rgba(185,50,42,.3)}
+  .spin-btn:disabled{background:#C9BBAA;box-shadow:0 6px 0 #A89884;cursor:default}
+  .odds-line{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .pill{display:inline-flex;align-items:center;gap:6px;background:#F7EFE3;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700}
+  .alert{background:#FFF0E6;color:#9A4A12;border:1px solid #F5C9A6;border-radius:12px;padding:10px 14px;font-size:14px;font-weight:700;text-align:center}
+  .side{display:flex;flex-direction:column;gap:20px}
+
+  .prize-list{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none}
+  .prize{display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;background:#FBF6EE}
+  .prize.out{opacity:.5}
+  .badge{flex:none;min-width:58px;padding:8px 10px;border-radius:12px;color:#fff;font-weight:900;text-align:center;font-size:15px}
+  .prize .body{flex:1;min-width:0}
+  .prize .what{font-weight:700;font-size:16px;word-break:break-word}
+  .prize .meta{font-size:12px;color:var(--sub);margin-top:2px}
+  .link-btn{border:0;background:none;color:var(--accent);font-weight:700;font-size:13px;padding:4px}
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+  .stat{background:#FBF6EE;border-radius:12px;padding:10px;text-align:center}
+  .stat b{display:block;font-size:22px}
+  .stat span{font-size:12px;color:var(--sub)}
+  .history{list-style:none;margin:0;padding:0;max-height:260px;overflow:auto;display:flex;flex-direction:column;gap:6px}
+  .history li{display:flex;gap:10px;align-items:center;font-size:14px;padding:8px 10px;border-radius:10px;background:#FBF6EE}
+  .history .time{color:var(--sub);font-size:12px;font-variant-numeric:tabular-nums;flex:none}
+  .dot{width:10px;height:10px;border-radius:50%;flex:none}
+  .empty{color:var(--sub);font-size:14px;text-align:center;padding:16px}
+
+  /* settings view */
+  .settings{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:20px;align-items:start}
+  @media (max-width:900px){.settings{grid-template-columns:1fr}}
+  .tier{border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;margin-bottom:12px;background:#fff}
+  .tier.lose{background:#FBF6EE}
+  .swatch{width:36px;height:36px;border-radius:10px;border:0;margin-top:22px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.6)}
+  .fields{display:grid;grid-template-columns:110px 1fr;gap:10px}
+  .fields .row2{grid-column:1/-1;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end}
+  @media (max-width:520px){.fields{grid-template-columns:1fr}}
+  .f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--sub)}
+  .inp{border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font-size:15px;background:#fff;width:100%;outline:none;transition:border-color .15s}
+  .inp:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(242,179,61,.2)}
+  .stepper{display:flex;align-items:center;border:1.5px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+  .stepper button{border:0;background:#F7EFE3;width:38px;height:42px;font-size:20px;font-weight:700}
+  .stepper button:active{background:#EFE2CF}
+  .stepper input{border:0;width:56px;text-align:center;font-size:17px;font-weight:700;outline:none;-moz-appearance:textfield}
+  .stepper input::-webkit-outer-spin-button,.stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .stepper .unit{padding:0 10px 0 0;font-weight:700;color:var(--sub)}
+  .stock{width:110px}
+  .icon-btn{border:0;background:#F7EFE3;width:36px;height:36px;border-radius:10px;font-size:18px;color:var(--sub)}
+  .icon-btn:hover{background:#F2DCD8;color:var(--accent)}
+  .add-btn{width:100%;border:2px dashed #E3D3BC;background:transparent;border-radius:16px;padding:14px;font-weight:700;font-size:15px;color:var(--sub);margin-bottom:12px}
+  .add-btn:hover{border-color:var(--gold);color:var(--ink);background:#FFFBF3}
+  .add-btn:disabled{opacity:.5;cursor:default}
+  .auto-prob{font-size:22px;font-weight:900}
+  .remain{font-size:12px;color:var(--sub);padding-bottom:12px}
+
+  .bar{display:flex;height:22px;border-radius:999px;overflow:hidden;background:#F3E9DA;margin:6px 0 10px}
+  .bar span{display:block;height:100%;transition:width .2s}
+  .legend{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:14px}
+  .legend li{display:flex;align-items:center;gap:8px}
+  .legend .pct{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums}
+  .total{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line);margin-top:12px;padding-top:12px;font-weight:700}
+  .total b{font-size:22px}
+  .err{color:var(--accent);font-weight:700;font-size:14px;margin-top:8px}
+  .seg{display:flex;background:#F3E9DA;border-radius:12px;padding:4px;gap:4px}
+  .seg button{flex:1;border:0;background:transparent;padding:10px 8px;border-radius:9px;font-weight:700;font-size:14px;color:var(--sub)}
+  .seg button[aria-pressed="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  .opt{margin-bottom:16px}
+  .opt > .t{font-weight:700;font-size:14px;margin-bottom:6px}
+  .switch{display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:700;font-size:14px}
+  .toggle{position:relative;width:50px;height:30px;border-radius:999px;border:0;background:#D8CAB7;transition:.2s}
+  .toggle::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .toggle[aria-checked="true"]{background:var(--ok)}
+  .toggle[aria-checked="true"]::after{left:23px}
+  .btn{border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:10px 14px;font-weight:700;font-size:14px;width:100%;text-align:left}
+  .btn:hover{border-color:var(--gold)}
+  .btn.danger{color:var(--accent)}
+  .stack{display:flex;flex-direction:column;gap:8px}
+  .primary{border:0;background:var(--ink);color:#fff;border-radius:12px;padding:14px;font-weight:900;font-size:16px;width:100%}
+
+  /* palette popover */
+  .pop{position:absolute;z-index:30;background:#fff;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:10px;display:grid;grid-template-columns:repeat(5,28px);gap:8px}
+  .pop button{width:28px;height:28px;border-radius:8px;border:0}
+
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(43,33,24,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .overlay.show{display:flex}
+  .modal{background:#fff;border-radius:24px;padding:28px 24px 22px;width:min(420px,100%);text-align:center;animation:pop .35s cubic-bezier(.2,1.4,.4,1)}
+  @keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+  .modal .rank{display:inline-block;color:#fff;font-weight:900;font-size:30px;padding:10px 28px;border-radius:16px;margin-bottom:10px}
+  .modal .headline{font-size:28px;font-weight:900;margin:6px 0}
+  .modal .prize-name{font-size:20px;font-weight:700;background:#FFF6E0;border-radius:14px;padding:14px;margin:14px 0 18px;word-break:break-word}
+  .modal .prize-name small{display:block;font-size:12px;color:var(--sub);margin-bottom:4px}
+  .modal .actions{display:flex;gap:10px}
+  .modal .actions button{flex:1;padding:14px;border-radius:14px;font-weight:900;font-size:16px;border:0}
+  .modal .again{background:var(--accent);color:#fff}
+  .modal .close{background:#F3E9DA}
+  .confirm p{font-size:15px;line-height:1.7;margin:4px 0 20px}
+  #confetti{position:fixed;inset:0;pointer-events:none;z-index:60}
+  .hidden{display:none !important}
+  kbd{font-family:inherit;background:#F3E9DA;border-radius:6px;padding:1px 6px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><div class="logo" aria-hidden="true"></div><h1>くじ引きルーレット</h1></div>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" data-view="roulette" aria-selected="true">ルーレット</button>
+      <button class="tab" role="tab" data-view="settings" aria-selected="false">景品・確率の設定</button>
+    </nav>
+  </header>
+
+  <!-- ===== ルーレット画面 ===== -->
+  <section id="view-roulette">
+    <div class="grid">
+      <div class="card stage">
+        <div class="wheel-box">
+          <svg class="pointer" viewBox="0 0 44 54" aria-hidden="true"><path d="M22 52 L4 14 A20 20 0 1 1 40 14 Z" fill="#2B2118"/><circle cx="22" cy="18" r="7" fill="#F2B33D"/></svg>
+          <canvas id="wheel" aria-label="ルーレット"></canvas>
+          <button class="hub" id="hubBtn" aria-label="ルーレットを回す">回す</button>
+        </div>
+        <div id="stageAlert" class="alert hidden"></div>
+        <button class="spin-btn" id="spinBtn">ルーレットを回す</button>
+        <div class="odds-line" id="oddsLine"></div>
+        <div class="muted"><kbd>Space</kbd> キーでも回せます</div>
+      </div>
+
+      <div class="side">
+        <div class="card">
+          <h2>景品一覧 <button class="link-btn" data-goto="settings">編集する →</button></h2>
+          <ul class="prize-list" id="prizeList"></ul>
+        </div>
+        <div class="card">
+          <h2>結果 <button class="link-btn" id="clearHistBtn">履歴を消す</button></h2>
+          <div class="stats">
+            <div class="stat"><b id="stTotal">0</b><span>回した回数</span></div>
+            <div class="stat"><b id="stWin">0</b><span>当たり</span></div>
+            <div class="stat"><b id="stRate">-</b><span>実際の当選率</span></div>
+          </div>
+          <ul class="history" id="history"></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 設定画面 ===== -->
+  <section id="view-settings" class="hidden">
+    <div class="settings">
+      <div>
+        <div class="card">
+          <h2>当たりの設定 <span class="muted" id="tierCount"></span></h2>
+          <p class="muted" style="margin:-6px 0 14px">「1等は〇〇」のように、等級ごとに景品の内容・当たる確率（1％単位）・本数を決められます。</p>
+          <div id="tierList"></div>
+          <button class="add-btn" id="addTierBtn">＋ 当たりを追加する</button>
+          <div class="tier lose">
+            <div class="swatch" style="background:#EDE3D3"></div>
+            <div class="fields">
+              <label class="f">表示名<input class="inp" id="loseName" maxlength="12"></label>
+              <label class="f">はずれの時のメッセージ<input class="inp" id="losePrize" maxlength="40" placeholder="例：参加賞のアメをどうぞ"></label>
+              <div class="row2">
+                <div class="f" style="font-size:12px;font-weight:700;color:var(--sub)">はずれの確率（自動）<span class="auto-prob" id="loseProb">--%</span></div>
+                <div class="remain">当たりの確率を引いた残りが自動で「はずれ」になります</div>
+              </div>
+            </div>
+            <div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="side">
+        <div class="card">
+          <h2>確率の内訳</h2>
+          <div class="bar" id="probBar"></div>
+          <ul class="legend" id="legend"></ul>
+          <div class="total"><span>当たりの合計</span><b id="winTotal">0%</b></div>
+          <div class="err hidden" id="probErr"></div>
+        </div>
+        <div class="card">
+          <h2>表示とサウンド</h2>
+          <div class="opt">
+            <div class="t">ルーレットの見た目</div>
+            <div class="seg" id="modeSeg">
+              <button data-mode="equal">均等に並べる</button>
+              <button data-mode="prop">確率どおりの広さ</button>
+            </div>
+            <div class="muted" style="margin-top:6px" id="modeNote"></div>
+          </div>
+          <div class="switch">効果音<button class="toggle" id="soundToggle" role="switch" aria-label="効果音"></button></div>
+        </div>
+        <div class="card">
+          <h2>リセット</h2>
+          <div class="stack">
+            <button class="btn" id="refillBtn">本数を最初の数に戻す</button>
+            <button class="btn" id="resetHistBtn">結果の履歴を消す</button>
+            <button class="btn danger" id="factoryBtn">すべて初期設定に戻す</button>
+          </div>
+        </div>
+        <button class="primary" data-goto="roulette">この設定でルーレットへ →</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- 結果 -->
+<div class="overlay" id="resultOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="resHead">
+    <div class="rank" id="resRank"></div>
+    <div class="headline" id="resHead"></div>
+    <div class="prize-name" id="resPrize"></div>
+    <div class="actions">
+      <button class="close" id="resClose">閉じる</button>
+      <button class="again" id="resAgain">もう一度回す</button>
+    </div>
+  </div>
+</div>
+
+<!-- 確認 -->
+<div class="overlay" id="confirmOverlay">
+  <div class="modal confirm" role="dialog" aria-modal="true">
+    <div class="headline" style="font-size:20px" id="cfTitle"></div>
+    <p id="cfText"></p>
+    <div class="actions">
+      <button class="close" id="cfNo">やめる</button>
+      <button class="again" id="cfYes">実行する</button>
+    </div>
+  </div>
+</div>
+
+<canvas id="confetti"></canvas>
+
+<script>
+(() => {
+  const KEY = 'kuji-roulette-v1';
+  const PALETTE = ['#E2463B','#F2B33D','#2F9E8F','#3D6FD6','#9B5DE5','#F07AA5','#5DB85C','#FF8C42','#22A6C9','#8D6E63'];
+  const LOSE_COLORS = ['#EDE3D3','#F8F1E6'];
+  const MAX_TIERS = 10;
+
+  const uid = () => Math.random().toString(36).slice(2, 9);
+  const DEFAULT = () => ({
+    tiers: [
+      { id: uid(), name: '1等', prize: 'ゲーム機', prob: 3,  stock: 1,    remaining: 1,    color: PALETTE[0] },
+      { id: uid(), name: '2等', prize: 'ギフト券 3,000円分', prob: 10, stock: 3, remaining: 3, color: PALETTE[1] },
+      { id: uid(), name: '3等', prize: 'お菓子の詰め合わせ', prob: 25, stock: null, remaining: null, color: PALETTE[2] },
+    ],
+    lose: { name: 'はずれ', prize: '残念！またチャレンジしてね' },
+    mode: 'equal',
+    sound: true,
+    history: [],
+  });
+
+  // ---------- state ----------
+  let S = load();
+  function load() {
+    try {
+      const s = JSON.parse(localStorage.getItem(KEY));
+      if (s && Array.isArray(s.tiers) && s.lose) return s;
+    } catch (e) {}
+    return DEFAULT();
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const mod = (a, n) => ((a % n) + n) % n;
+
+  // 公平な乱数（暗号論的乱数＋偏りなし）
+  function randInt(n) {
+    const max = Math.floor(0x100000000 / n) * n;
+    const buf = new Uint32Array(1);
+    let x;
+    do { crypto.getRandomValues(buf); x = buf[0]; } while (x >= max);
+    return x % n;
+  }
+  const rand01 = () => randInt(1000000) / 1000000;
+
+  const inStock = (t) => t.remaining === null || t.remaining > 0;
+  const sumProb = (arr) => arr.reduce((a, t) => a + (t.prob || 0), 0);
+  const effTiers = () => S.tiers.filter(t => t.prob > 0 && inStock(t));
+  const totalSet = () => sumProb(S.tiers);
+  const isValid = () => totalSet() <= 100;
+
+  // ---------- wheel ----------
+  const cv = $('wheel'), ctx = cv.getContext('2d');
+  let rot = 0, segs = [], spinning = false, size = 500, dpr = 1;
+
+  function buildSegments() {
+    const eff = effTiers();
+    const lp = 100 - sumProb(eff);
+    let list = [];
+    if (S.mode === 'prop') {
+      if (!eff.length) list = [{ kind: 'lose', w: 100 }];
+      else {
+        const piece = lp / eff.length;
+        eff.forEach(t => { list.push({ kind: 'tier', id: t.id, w: t.prob }); if (piece > 0) list.push({ kind: 'lose', w: piece }); });
+      }
+    } else {
+      let pattern = [];
+      if (!eff.length) pattern = [{ kind: 'lose' }];
+      else eff.forEach(t => { pattern.push({ kind: 'tier', id: t.id }); if (lp > 0) pattern.push({ kind: 'lose' }); });
+      while (list.length < 8) list = list.concat(pattern.map(p => ({ ...p })));
+      list.forEach(s => s.w = 1);
+    }
+    const total = list.reduce((a, s) => a + s.w, 0);
+    let a = 0, li = 0;
+    list.forEach(s => {
+      s.a = a; s.w = s.w / total * 360; a += s.w;
+      if (s.kind === 'tier') { const t = S.tiers.find(x => x.id === s.id); s.color = t.color; s.label = t.name; }
+      else { s.color = LOSE_COLORS[li++ % 2]; s.label = S.lose.name || 'はずれ'; }
+    });
+    // 隣り合うはずれが同色にならないよう最後を調整
+    if (list.length > 1) {
+      const f = list[0], l = list[list.length - 1];
+      if (f.kind === 'lose' && l.kind === 'lose' && f.color === l.color) l.color = '#F2E8D8';
+    }
+    segs = list;
+  }
+
+  function resize() {
+    const r = cv.getBoundingClientRect();
+    size = r.width || 500; dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    cv.width = Math.round(size * dpr); cv.height = Math.round(size * dpr);
+    draw();
+  }
+
+  function textColor(hex) {
+    const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+    return (0.299 * r + 0.587 * g + 0.114 * b) > 170 ? '#5A4A3A' : '#FFFFFF';
+  }
+
+  let blink = 0;
+  function draw() {
+    const c = size / 2, R = c * 0.9;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, size, size);
+
+    // outer rim
+    ctx.beginPath(); ctx.arc(c, c, c * 0.99, 0, Math.PI * 2);
+    const g = ctx.createRadialGradient(c, c, R, c, c, c);
+    g.addColorStop(0, '#3A2C20'); g.addColorStop(1, '#2B2118');
+    ctx.fillStyle = g; ctx.fill();
+
+    ctx.save();
+    ctx.translate(c, c);
+    ctx.rotate(rot * Math.PI / 180);
+    segs.forEach(s => {
+      const a0 = (s.a - 90) * Math.PI / 180, a1 = (s.a + s.w - 90) * Math.PI / 180;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, a0, a1); ctx.closePath();
+      ctx.fillStyle = s.color; ctx.fill();
+      if (segs.length > 1) { ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 2; ctx.stroke(); }
+      // label
+      if (s.w >= 9) {
+        const mid = (s.a + s.w / 2 - 90) * Math.PI / 180;
+        ctx.save(); ctx.rotate(mid);
+        const fs = Math.max(11, Math.min(size * 0.05, s.w * size / 360 * 1.2));
+        ctx.font = `900 ${fs}px "Zen Maru Gothic", sans-serif`;
+        ctx.fillStyle = textColor(s.color);
+        ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+        let label = s.label;
+        const maxW = R * 0.62;
+        while (ctx.measureText(label).width > maxW && label.length > 1) label = label.slice(0, -1);
+        if (label !== s.label) label = label.slice(0, -1) + '…';
+        ctx.fillText(label, R - size * 0.04, 0);
+        ctx.restore();
+      }
+    });
+    ctx.restore();
+
+    // light bulbs
+    const n = 24;
+    for (let i = 0; i < n; i++) {
+      const ang = i / n * Math.PI * 2;
+      const x = c + Math.cos(ang) * (c * 0.945), y = c + Math.sin(ang) * (c * 0.945);
+      const on = spinning ? ((i + blink) % 2 === 0) : true;
+      ctx.beginPath(); ctx.arc(x, y, size * 0.011, 0, Math.PI * 2);
+      ctx.fillStyle = on ? '#FFD66B' : '#7A5A2A'; ctx.fill();
+    }
+    // inner ring
+    ctx.beginPath(); ctx.arc(c, c, R, 0, Math.PI * 2);
+    ctx.strokeStyle = '#F2B33D'; ctx.lineWidth = size * 0.012; ctx.stroke();
+  }
+
+  function segIndexAtPointer() {
+    const th = mod(-rot, 360);
+    for (let i = 0; i < segs.length; i++) if (th >= segs[i].a && th < segs[i].a + segs[i].w) return i;
+    return segs.length - 1;
+  }
+
+  // ---------- audio ----------
+  let ac = null;
+  function ensureAudio() {
+    if (!S.sound) return;
+    try { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch (e) { ac = null; }
+  }
+  function beep(freq, dur, type = 'square', vol = 0.06, when = 0) {
+    if (!S.sound || !ac) return;
+    try {
+      const t = ac.currentTime + when, o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.02);
+    } catch (e) {}
+  }
+  const tick = () => beep(1400, 0.03, 'square', 0.035);
+  function fanfare() { [523, 659, 784, 1047].forEach((f, i) => beep(f, i === 3 ? 0.5 : 0.14, 'triangle', 0.12, i * 0.12)); }
+  function sad() { [392, 330].forEach((f, i) => beep(f, 0.25, 'sine', 0.1, i * 0.22)); }
+
+  // ---------- spin ----------
+  function drawOutcome() {
+    const eff = effTiers();
+    const r = randInt(100); // 0〜99（1％単位）
+    let acc = 0;
+    for (const t of eff) { acc += t.prob; if (r < acc) return { kind: 'tier', id: t.id }; }
+    return { kind: 'lose' };
+  }
+
+  function spin() {
+    if (spinning || !isValid()) return;
+    ensureAudio();
+    buildSegments();
+    const outcome = drawOutcome();
+    const cands = segs.filter(s => s.kind === outcome.kind && (outcome.kind === 'lose' || s.id === outcome.id));
+    const seg = cands[randInt(cands.length)];
+    const landing = seg.a + seg.w * (0.15 + 0.7 * rand01());
+    const start = rot;
+    const turns = 6 + randInt(3);
+    let target = start - mod(start, 360) + turns * 360 + mod(360 - landing, 360);
+    if (target - start < 5 * 360) target += 360;
+    const dur = 5200 + randInt(1200);
+    const t0 = performance.now();
+    let lastIdx = segIndexAtPointer(), lastBlink = 0;
+    spinning = true; setSpinUI();
+
+    const ease = (x) => 1 - Math.pow(1 - x, 4);
+    function frame(now) {
+      const p = Math.min(1, (now - t0) / dur);
+      rot = start + (target - start) * ease(p);
+      if (now - lastBlink > 140) { blink++; lastBlink = now; }
+      const idx = segIndexAtPointer();
+      if (idx !== lastIdx) { tick(); lastIdx = idx; }
+      draw();
+      if (p < 1) requestAnimationFrame(frame);
+      else { rot = mod(target, 360); spinning = false; draw(); finish(outcome); }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function finish(outcome) {
+    let rec;
+    if (outcome.kind === 'tier') {
+      const t = S.tiers.find(x => x.id === outcome.id);
+      if (t.remaining !== null) t.remaining = Math.max(0, t.remaining - 1);
+      rec = { t: Date.now(), kind: 'tier', name: t.name, prize: t.prize, color: t.color };
+    } else {
+      rec = { t: Date.now(), kind: 'lose', name: S.lose.name || 'はずれ', prize: S.lose.prize, color: '#CBB89E' };
+    }
+    S.history.unshift(rec);
+    S.history = S.history.slice(0, 200);
+    save();
+    showResult(rec);
+    renderRoulette();
+  }
+
+  function setSpinUI() {
+    const can = !spinning && isValid();
+    $('spinBtn').disabled = !can; $('hubBtn').disabled = !can;
+    $('spinBtn').textContent = spinning ? '回転中…' : 'ルーレットを回す';
+    document.querySelectorAll('.tab').forEach(b => b.disabled = spinning);
+  }
+
+  // ---------- result modal ----------
+  function showResult(r) {
+    const win = r.kind === 'tier';
+    const rank = $('resRank');
+    rank.textContent = r.name; rank.style.background = win ? r.color : '#B9A88F';
+    $('resHead').textContent = win ? '当たり！おめでとう！' : '残念…';
+    $('resPrize').innerHTML = win
+      ? `<small>景品</small>${esc(r.prize || '（景品未設定）')}`
+      : (r.prize ? esc(r.prize) : 'またチャレンジしてね');
+    $('resultOverlay').classList.add('show');
+    $('resAgain').focus();
+    if (win) { fanfare(); confetti(r.color); } else sad();
+  }
+  function closeResult() { $('resultOverlay').classList.remove('show'); buildSegments(); draw(); setSpinUI(); }
+  $('resClose').onclick = closeResult;
+  $('resAgain').onclick = () => { closeResult(); spin(); };
+  $('resultOverlay').addEventListener('click', e => { if (e.target.id === 'resultOverlay') closeResult(); });
+
+  // ---------- confirm modal ----------
+  let cfAction = null;
+  function confirmBox(title, text, action) {
+    $('cfTitle').textContent = title; $('cfText').textContent = text; cfAction = action;
+    $('confirmOverlay').classList.add('show'); $('cfNo').focus();
+  }
+  const closeCf = () => { $('confirmOverlay').classList.remove('show'); cfAction = null; };
+  $('cfNo').onclick = closeCf;
+  $('cfYes').onclick = () => { const a = cfAction; closeCf(); if (a) a(); };
+  $('confirmOverlay').addEventListener('click', e => { if (e.target.id === 'confirmOverlay') closeCf(); });
+
+  // ---------- confetti ----------
+  const cc = $('confetti'), cctx = cc.getContext('2d');
+  let parts = [], confRunning = false;
+  function confetti(main) {
+    cc.width = innerWidth; cc.height = innerHeight;
+    const cols = [main, '#F2B33D', '#E2463B', '#2F9E8F', '#3D6FD6', '#F07AA5'];
+    for (let i = 0; i < 180; i++) parts.push({
+      x: innerWidth / 2 + (Math.random() - .5) * 200, y: innerHeight * 0.35,
+      vx: (Math.random() - .5) * 16, vy: -Math.random() * 14 - 4,
+      r: Math.random() * 6 + 4, c: cols[i % cols.length], a: Math.random() * 6, va: (Math.random() - .5) * .3, life: 0,
+    });
+    if (!confRunning) { confRunning = true; requestAnimationFrame(confStep); }
+  }
+  function confStep() {
+    cctx.clearRect(0, 0, cc.width, cc.height);
+    parts.forEach(p => {
+      p.vy += 0.32; p.vx *= 0.99; p.x += p.vx; p.y += p.vy; p.a += p.va; p.life++;
+      cctx.save(); cctx.translate(p.x, p.y); cctx.rotate(p.a);
+      cctx.fillStyle = p.c; cctx.fillRect(-p.r / 2, -p.r / 4, p.r, p.r / 2); cctx.restore();
+    });
+    parts = parts.filter(p => p.y < cc.height + 20 && p.life < 400);
+    if (parts.length) requestAnimationFrame(confStep);
+    else { confRunning = false; cctx.clearRect(0, 0, cc.width, cc.height); }
+  }
+
+  // ---------- roulette view render ----------
+  function renderRoulette() {
+    const eff = effTiers();
+    const winP = sumProb(eff);
+    // alert
+    const al = $('stageAlert');
+    if (!isValid()) { al.textContent = `当たりの確率の合計が ${totalSet()}% です。100% 以下になるよう設定を見直してください。`; al.classList.remove('hidden'); }
+    else if (S.tiers.length && !eff.length) { al.textContent = 'すべての当たりが終了しました（本数切れ）。今はすべて「はずれ」になります。'; al.classList.remove('hidden'); }
+    else al.classList.add('hidden');
+
+    $('oddsLine').innerHTML = isValid()
+      ? `<span class="pill"><span class="dot" style="background:var(--accent)"></span>当たり ${winP}%</span><span class="pill"><span class="dot" style="background:#CBB89E"></span>${esc(S.lose.name || 'はずれ')} ${100 - winP}%</span>`
+      : '';
+
+    // prize list
+    const pl = $('prizeList');
+    if (!S.tiers.length) pl.innerHTML = '<li class="empty">当たりがまだありません。「編集する」から追加してください。</li>';
+    else pl.innerHTML = S.tiers.map(t => {
+      const out = !inStock(t);
+      const stock = t.remaining === null ? '本数 無制限' : (out ? '終了しました' : `残り ${t.remaining} / ${t.stock} 本`);
+      return `<li class="prize ${out ? 'out' : ''}">
+        <div class="badge" style="background:${t.color}">${esc(t.name)}</div>
+        <div class="body"><div class="what">${esc(t.name)}は「${esc(t.prize || '（未設定）')}」</div>
+        <div class="meta">確率 ${t.prob}%　・　${stock}</div></div></li>`;
+    }).join('');
+
+    // stats & history
+    const h = S.history, wins = h.filter(x => x.kind === 'tier').length;
+    $('stTotal').textContent = h.length; $('stWin').textContent = wins;
+    $('stRate').textContent = h.length ? (wins / h.length * 100).toFixed(1) + '%' : '-';
+    $('history').innerHTML = h.length ? h.slice(0, 50).map(r => {
+      const d = new Date(r.t), tm = d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      return `<li><span class="time">${tm}</span><span class="dot" style="background:${r.color}"></span><b>${esc(r.name)}</b><span style="color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.kind === 'tier' ? esc(r.prize) : ''}</span></li>`;
+    }).join('') : '<li class="empty" style="background:none">まだ回していません</li>';
+
+    setSpinUI();
+  }
+
+  // ---------- settings view render ----------
+  function renderTierList() {
+    const list = $('tierList');
+    list.innerHTML = S.tiers.map((t, i) => `
+      <div class="tier" data-id="${t.id}">
+        <button class="swatch" data-act="color" style="background:${t.color}" aria-label="色を変える"></button>
+        <div class="fields">
+          <label class="f">等級<input class="inp" data-k="name" value="${esc(t.name)}" maxlength="12" placeholder="例：1等"></label>
+          <label class="f">景品の内容（${esc(t.name || 'この等級')}は〇〇）<input class="inp" data-k="prize" value="${esc(t.prize)}" maxlength="40" placeholder="例：ゲーム機"></label>
+          <div class="row2">
+            <div class="f">当たる確率
+              <div class="stepper">
+                <button data-act="dec" aria-label="1%下げる">−</button>
+                <input type="number" inputmode="numeric" min="0" max="100" step="1" data-k="prob" value="${t.prob}">
+                <span class="unit">%</span>
+                <button data-act="inc" aria-label="1%上げる">＋</button>
+              </div>
+            </div>
+            <label class="f">本数（空欄＝無制限）<input class="inp stock" type="number" inputmode="numeric" min="0" step="1" data-k="stock" value="${t.stock ?? ''}" placeholder="無制限"></label>
+            <div class="remain" data-remain>${t.remaining === null ? '' : `残り ${t.remaining} 本`}</div>
+          </div>
+        </div>
+        <button class="icon-btn" data-act="del" aria-label="この当たりを削除">✕</button>
+      </div>`).join('');
+    $('addTierBtn').disabled = S.tiers.length >= MAX_TIERS;
+    $('addTierBtn').textContent = S.tiers.length >= MAX_TIERS ? `当たりは最大 ${MAX_TIERS} 種類までです` : '＋ 当たりを追加する';
+    $('tierCount').textContent = `当たり ${S.tiers.length} 種類`;
+  }
+
+  function renderSummary() {
+    const total = totalSet();
+    const lose = Math.max(0, 100 - total);
+    $('loseProb').textContent = total <= 100 ? `${lose}%` : '--%';
+    $('winTotal').textContent = `${total}%`;
+    $('winTotal').style.color = total > 100 ? 'var(--accent)' : '';
+    const err = $('probErr');
+    if (total > 100) { err.textContent = `合計が100%を ${total - 100}% 超えています。どこかの確率を下げてください。`; err.classList.remove('hidden'); }
+    else err.classList.add('hidden');
+    const scale = Math.max(100, total);
+    $('probBar').innerHTML = S.tiers.map(t => `<span style="width:${t.prob / scale * 100}%;background:${t.color}"></span>`).join('')
+      + `<span style="width:${lose / scale * 100}%;background:#E3D6C3"></span>`;
+    $('legend').innerHTML = S.tiers.map(t => `<li><span class="dot" style="background:${t.color}"></span>${esc(t.name || '（無名）')}<span class="muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:50%">${esc(t.prize)}</span><span class="pct">${t.prob}%</span></li>`).join('')
+      + `<li><span class="dot" style="background:#E3D6C3"></span>${esc(S.lose.name || 'はずれ')}<span class="pct">${total <= 100 ? lose + '%' : '--'}</span></li>`;
+    $('tierCount').textContent = `当たり ${S.tiers.length} 種類`;
+  }
+
+  function renderOptions() {
+    document.querySelectorAll('#modeSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === S.mode)));
+    $('modeNote').textContent = S.mode === 'equal'
+      ? 'マスを同じ大きさで並べます。当たるかどうかは設定した確率で決まります。'
+      : 'マスの広さを確率と同じにします。見た目どおりの当たりやすさです。';
+    $('soundToggle').setAttribute('aria-checked', String(!!S.sound));
+    $('loseName').value = S.lose.name; $('losePrize').value = S.lose.prize;
+  }
+
+  function renderSettings() { renderTierList(); renderSummary(); renderOptions(); }
+
+  // ---------- settings events ----------
+  const clampProb = (v) => Math.max(0, Math.min(100, Math.round(Number(v) || 0)));
+  const tierOf = (el) => S.tiers.find(t => t.id === el.closest('.tier')?.dataset.id);
+
+  $('tierList').addEventListener('input', e => {
+    const k = e.target.dataset.k, t = tierOf(e.target); if (!t || !k) return;
+    if (k === 'name' || k === 'prize') t[k] = e.target.value;
+    else if (k === 'prob') t.prob = clampProb(e.target.value);
+    else if (k === 'stock') {
+      const raw = e.target.value.trim();
+      t.stock = raw === '' ? null : Math.max(0, Math.round(Number(raw) || 0));
+      t.remaining = t.stock;
+      const r = e.target.closest('.tier').querySelector('[data-remain]');
+      r.textContent = t.remaining === null ? '' : `残り ${t.remaining} 本`;
+    }
+    if (k === 'name') {
+      const lbl = e.target.closest('.fields').querySelectorAll('label.f')[1];
+      lbl.firstChild.nodeValue = `景品の内容（${t.name || 'この等級'}は〇〇）`;
+    }
+    save(); renderSummary();
+  });
+  $('tierList').addEventListener('change', e => {
+    if (e.target.dataset.k === 'prob') { const t = tierOf(e.target); e.target.value = t.prob; }
+  });
+  $('tierList').addEventListener('click', e => {
+    const btn = e.target.closest('[data-act]'); if (!btn) return;
+    const t = tierOf(btn); if (!t) return;
+    const act = btn.dataset.act;
+    if (act === 'inc' || act === 'dec') {
+      t.prob = clampProb(t.prob + (act === 'inc' ? 1 : -1));
+      btn.closest('.stepper').querySelector('input').value = t.prob;
+      save(); renderSummary();
+    } else if (act === 'del') {
+      confirmBox('当たりを削除', `「${t.name || 'この当たり'}（${t.prize || '景品未設定'}）」を削除しますか？`, () => {
+        S.tiers = S.tiers.filter(x => x.id !== t.id); save(); renderSettings();
+      });
+    } else if (act === 'color') openPalette(btn, t);
+  });
+
+  function openPalette(anchor, t) {
+    closePalette();
+    const pop = document.createElement('div'); pop.className = 'pop'; pop.id = 'pop';
+    pop.innerHTML = PALETTE.map(c => `<button style="background:${c}" data-c="${c}" aria-label="${c}"></button>`).join('');
+    document.body.appendChild(pop);
+    const r = anchor.getBoundingClientRect();
+    pop.style.left = (r.left + scrollX) + 'px'; pop.style.top = (r.bottom + scrollY + 6) + 'px';
+    pop.addEventListener('click', e => {
+      const c = e.target.dataset.c; if (!c) return;
+      t.color = c; anchor.style.background = c; save(); renderSummary(); closePalette();
+    });
+    setTimeout(() => document.addEventListener('click', outside), 0);
+    function outside(e) { if (!pop.contains(e.target)) { closePalette(); document.removeEventListener('click', outside); } }
+  }
+  function closePalette() { const p = $('pop'); if (p) p.remove(); }
+
+  $('addTierBtn').onclick = () => {
+    if (S.tiers.length >= MAX_TIERS) return;
+    const used = new Set(S.tiers.map(t => t.color));
+    const color = PALETTE.find(c => !used.has(c)) || PALETTE[S.tiers.length % PALETTE.length];
+    const room = Math.max(0, 100 - totalSet());
+    S.tiers.push({ id: uid(), name: `${S.tiers.length + 1}等`, prize: '', prob: Math.min(5, room), stock: null, remaining: null, color });
+    save(); renderSettings();
+    const last = $('tierList').lastElementChild; last?.querySelector('[data-k="prize"]')?.focus();
+  };
+
+  $('loseName').addEventListener('input', e => { S.lose.name = e.target.value; save(); renderSummary(); });
+  $('losePrize').addEventListener('input', e => { S.lose.prize = e.target.value; save(); });
+  $('modeSeg').addEventListener('click', e => { const m = e.target.dataset.mode; if (!m) return; S.mode = m; save(); renderOptions(); });
+  $('soundToggle').onclick = () => { S.sound = !S.sound; save(); renderOptions(); if (S.sound) { ensureAudio(); beep(880, .08, 'triangle', .08); } };
+
+  $('refillBtn').onclick = () => confirmBox('本数を戻す', '各当たりの残り本数を、設定した本数に戻します。', () => {
+    S.tiers.forEach(t => t.remaining = t.stock); save(); renderSettings();
+  });
+  const clearHist = () => confirmBox('履歴を消す', 'これまでの結果の履歴と集計を消します。', () => { S.history = []; save(); renderRoulette(); });
+  $('resetHistBtn').onclick = clearHist;
+  $('clearHistBtn').onclick = clearHist;
+  $('factoryBtn').onclick = () => confirmBox('初期設定に戻す', '景品・確率・本数・履歴をすべて初期状態に戻します。元に戻せません。', () => {
+    S = DEFAULT(); save(); renderSettings();
+  });
+
+  // ---------- views ----------
+  function show(view) {
+    if (spinning) return;
+    if (view !== 'settings') view = 'roulette';
+    document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === view)));
+    $('view-roulette').classList.toggle('hidden', view !== 'roulette');
+    $('view-settings').classList.toggle('hidden', view !== 'settings');
+    closePalette();
+    if (view === 'roulette') { buildSegments(); renderRoulette(); requestAnimationFrame(resize); }
+    else renderSettings();
+    if (location.hash.slice(1) !== view) { try { history.replaceState(null, '', '#' + view); } catch (e) {} }
+    scrollTo({ top: 0 });
+  }
+  document.querySelectorAll('.tab').forEach(b => b.onclick = () => show(b.dataset.view));
+  document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => show(b.dataset.goto));
+  addEventListener('hashchange', () => show(location.hash.slice(1)));
+
+  $('spinBtn').onclick = spin;
+  $('hubBtn').onclick = spin;
+  addEventListener('keydown', e => {
+    if (e.key === 'Escape') { if ($('confirmOverlay').classList.contains('show')) closeCf(); else if ($('resultOverlay').classList.contains('show')) closeResult(); }
+    const typing = /INPUT|TEXTAREA/.test(document.activeElement?.tagName);
+    if (e.code === 'Space' && !typing && !$('view-roulette').classList.contains('hidden')
+        && !$('resultOverlay').classList.contains('show') && !$('confirmOverlay').classList.contains('show')) {
+      e.preventDefault(); spin();
+    }
+  });
+  addEventListener('resize', () => { if (!$('view-roulette').classList.contains('hidden')) resize(); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => draw());
+
+  show(location.hash.slice(1) || 'roulette');
+})();
+</script>
+</body>
+</html>
